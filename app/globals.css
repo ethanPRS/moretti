@@ -39,8 +39,8 @@
   --color-warm-soft: var(--warm-soft);
   --color-dev: var(--dev);
   --color-dev-soft: var(--dev-soft);
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-karla);
+  --font-display: var(--font-poppins);
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-plex-mono);
   --radius-brand: var(--r);
   --radius-pill: var(--r-pill);
@@ -51,7 +51,7 @@
 body {
   background: var(--ground);
   color: var(--ink);
-  font-family: var(--font-karla), "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -117,9 +117,11 @@ section[id] {
 h1,
 h2,
 h3 {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
   font-weight: 600;
-  line-height: 1.12;
+  /* Poppins es geométrica y ancha: a tamaño de título pide ir más cerrada. */
+  letter-spacing: -0.025em;
+  line-height: 1.18;
   text-wrap: balance;
   margin: 0;
 }
@@ -146,9 +148,12 @@ h3 {
   color: var(--muted);
 }
 
-/* Las cifras de dinero van en la serif, con numeración tabular. */
+/* Cifras de dinero. Ojo: Poppins no trae cifras tabulares, así que
+   `tabular-nums` aquí no surte efecto —el "1" es más angosto que el resto—.
+   Las columnas de montos alinean por ir a la derecha, no por la fuente.
+   Si algún día se necesita alineación real, hay que cambiar de familia. */
 .figure {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -178,7 +183,7 @@ h3 {
   background: var(--accent);
   color: var(--ground);
   border: 0;
-  font-family: var(--font-karla), sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 15px;
   font-weight: 600;
   padding: 11px 22px;
@@ -229,7 +234,7 @@ input[type="number"],
 input[type="date"],
 select {
   width: 100%;
-  font-family: var(--font-karla), sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 15.5px;
   padding: 10px 14px;
   border: 1px solid var(--line-2);
@@ -316,7 +321,7 @@ select {
   font-weight: 700;
 }
 .kpi .v {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
   font-size: 24px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

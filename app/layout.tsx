@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
-import { Fraunces, Karla, IBM_Plex_Mono } from "next/font/google";
+import { Poppins, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
-
-const karla = Karla({
-  variable: "--font-karla",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -30,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${fraunces.variable} ${karla.variable} ${plexMono.variable} h-full`}
+      className={`${poppins.variable} ${plexMono.variable} h-full`}
     >
       <body className="min-h-full">
         {/* Sin JS no hay quién revele: se muestra todo de una vez. */}
