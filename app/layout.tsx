@@ -1,46 +1,71 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Karla, IBM_Plex_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const karla = Karla({
+  variable: "--font-karla",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Casa Lista — Prototipo",
-  description: "Motor financiero y expediente por unidad (prototipo académico)",
+  title: "día uno · panel",
+  description: "Motor financiero y expediente por unidad · con Moretti",
 };
+
+const enlaces = [
+  { href: "/", label: "Panel" },
+  { href: "/proyectos", label: "Proyectos" },
+  { href: "/paquetes", label: "Paquetes" },
+];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${karla.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900">
-        <header className="border-b border-zinc-200 bg-white">
-          <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4 text-sm font-medium">
-            <Link href="/" className="font-semibold text-zinc-900">
-              Casa Lista · Prototipo
+      <body className="min-h-full flex flex-col">
+        <header className="sticky top-0 z-40 border-b border-line bg-ground">
+          <nav className="mx-auto flex max-w-[1080px] items-center justify-between gap-6 px-7 py-4">
+            <Link href="/" className="leading-none">
+              <span className="font-display text-[21px] font-bold tracking-[-0.015em]">
+                día uno
+              </span>
+              <span className="mt-0.5 block text-[11px] uppercase tracking-[0.13em] text-muted">
+                con Moretti
+              </span>
             </Link>
-            <Link href="/proyectos" className="text-zinc-600 hover:text-zinc-900">
-              Proyectos
-            </Link>
-            <Link href="/paquetes" className="text-zinc-600 hover:text-zinc-900">
-              Paquetes
-            </Link>
+            <div className="flex items-center gap-6 text-[15px]">
+              {enlaces.map((e) => (
+                <Link key={e.href} href={e.href} className="text-ink-2 hover:text-accent">
+                  {e.label}
+                </Link>
+              ))}
+            </div>
           </nav>
         </header>
         <main className="flex-1">
-          <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+          <div className="mx-auto max-w-[1080px] px-7 py-12">{children}</div>
         </main>
+        <footer className="border-t border-line py-7 text-sm text-muted">
+          <div className="mx-auto max-w-[1080px] px-7">
+            Prototipo académico · ambiente de pruebas · ningún dato real
+          </div>
+        </footer>
       </body>
     </html>
   );

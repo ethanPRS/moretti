@@ -1,15 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import NuevoPrototipoForm from "./NuevoPrototipoForm";
-import NuevoPrecioForm from "./NuevoPrecioForm";
-import NuevaUnidadForm from "./NuevaUnidadForm";
+import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
+import FormulariosProyecto from "./FormulariosProyecto";
 
-export default async function ProyectoDetallePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ProyectoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const [proyecto, paquetes] = await Promise.all([
@@ -18,10 +13,21 @@ export default async function ProyectoDetallePage({
       include: {
         desarrollador: true,
         prototipos: {
-          include: { precios: { include: { paquete: true }, orderBy: { vigenteDesde: "desc" } } },
+          include: {
+            precios: {
+              where: { vigenteHasta: null },
+              include: { paquete: true },
+              orderBy: { paquete: { nivel: "asc" } },
+            },
+          },
+          orderBy: { clave: "asc" },
         },
         unidades: {
-          include: { prototipo: true, comprador: { include: { planes: true } } },
+          include: {
+            prototipo: true,
+            contrato: true,
+            comprador: { include: { planes: { orderBy: { createdAt: "desc" }, take: 1 } } },
+          },
           orderBy: [{ torre: "asc" }, { numero: "asc" }],
         },
       },
@@ -33,108 +39,132 @@ export default async function ProyectoDetallePage({
 
   return (
     <div className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-2xl font-semibold">{proyecto.nombre}</h1>
-        <p className="text-sm text-zinc-500">
-          {proyecto.desarrollador.nombre} · {proyecto.etapaPipeline} ·{" "}
-          {Number(proyecto.porcentajeAnticipo) * 100}% anticipo ·{" "}
-          {Number(proyecto.porcentajeComision) * 100}% comisión
-        </p>
-      </div>
+      <PageHead
+        eyebrow={proyecto.desarrollador.nombre}
+        titulo={proyecto.nombre}
+        descripcion={`${proyecto.etapaPipeline} · anticipo ${(Number(proyecto.porcentajeAnticipo) * 100).toFixed(0)} % · comisión del canal ${(Number(proyecto.porcentajeComision) * 100).toFixed(0)} % · entrega estimada ${proyecto.fechaEntregaUnidades?.toLocaleDateString("es-MX") ?? "por definir"}`}
+      />
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Prototipos y precios</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {proyecto.prototipos.map((proto) => {
-            const vigentes = proto.precios.filter((pr) => !pr.vigenteHasta);
-            return (
-              <div key={proto.id} className="rounded-lg border border-zinc-200 bg-white p-4">
-                <div className="font-medium">
-                  {proto.clave} · {Number(proto.superficie)} m² · {proto.recamaras} rec.
-                </div>
-                <ul className="mt-2 flex flex-col gap-1 text-sm text-zinc-600">
-                  {vigentes.length === 0 && <li className="text-zinc-400">Sin precios cargados</li>}
-                  {vigentes.map((pr) => (
-                    <li key={pr.id}>
-                      {pr.paquete.nombre}: ${Number(pr.monto).toLocaleString("es-MX")}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NuevoPrototipoForm proyectoId={proyecto.id} />
-          <NuevoPrecioForm
-            prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
-            paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
-          />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Unidades</h2>
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+        <h2 className="text-[22px]">Unidades</h2>
+        <div className="card overflow-x-auto p-5">
+          <table className="tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-2">Torre / Número</th>
-                <th className="px-4 py-2">Prototipo</th>
-                <th className="px-4 py-2">Comprador</th>
-                <th className="px-4 py-2">Plan</th>
-                <th className="px-4 py-2" />
+                <th>Unidad</th>
+                <th>Prototipo</th>
+                <th>Comprador</th>
+                <th>Contrato</th>
+                <th className="r">Estado</th>
+                <th className="r" />
               </tr>
             </thead>
             <tbody>
-              {proyecto.unidades.map((u) => (
-                <tr key={u.id} className="border-t border-zinc-100">
-                  <td className="px-4 py-2">
-                    {u.torre} / {u.numero}
-                  </td>
-                  <td className="px-4 py-2">{u.prototipo.clave}</td>
-                  <td className="px-4 py-2">{u.comprador?.nombre ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    {u.comprador?.planes[0] ? (
-                      <Link
-                        href={`/planes/${u.comprador.planes[0].id}`}
-                        className="text-zinc-900 underline"
-                      >
-                        Ver estado de cuenta
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {!u.comprador && (
-                      <Link
-                        href={`/compradores/nuevo?unidadId=${u.id}`}
-                        className="text-sm font-medium text-zinc-900 underline"
-                      >
-                        Registrar comprador
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {proyecto.unidades.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
-                    Sin unidades todavía.
-                  </td>
-                </tr>
-              )}
+              {proyecto.unidades.map((u) => {
+                const plan = u.comprador?.planes[0];
+                return (
+                  <tr key={u.id}>
+                    <td className="font-medium">
+                      {u.torre} {u.numero}
+                    </td>
+                    <td className="text-ink-2">{u.prototipo.clave}</td>
+                    <td>
+                      {u.comprador ? (
+                        <>
+                          {u.comprador.nombre}
+                          <span className="ml-2 font-mono text-[11px] text-muted">
+                            {u.comprador.folio}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted">Libre</span>
+                      )}
+                    </td>
+                    <td>
+                      {u.contrato ? (
+                        <span className="chip ok">Firmado</span>
+                      ) : u.comprador ? (
+                        <span className="chip late">Falta</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="r">
+                      {u.comprador ? (
+                        <ChipEstadoFinanciero estado={u.estadoFinanciero} />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="r">
+                      {plan ? (
+                        <Link href={`/planes/${plan.id}`} className="text-accent hover:underline">
+                          Estado de cuenta
+                        </Link>
+                      ) : u.comprador ? null : (
+                        <Link
+                          href={`/unidades/${u.id}/alta`}
+                          className="text-accent hover:underline"
+                        >
+                          Dar de alta
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-
-        <NuevaUnidadForm
-          proyectoId={proyecto.id}
-          prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
-        />
       </section>
+
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-[22px]">Prototipos y lista de precios</h2>
+          <p className="mt-2 text-[14px] text-ink-2">
+            Un precio nuevo no sobreescribe al anterior: cierra su vigencia y queda en el histórico.
+          </p>
+        </div>
+        <div className="card overflow-x-auto p-5">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Prototipo</th>
+                <th className="r">m²</th>
+                <th className="r">Rec.</th>
+                {paquetes.map((p) => (
+                  <th key={p.id} className="r">
+                    {p.nombre}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {proyecto.prototipos.map((proto) => (
+                <tr key={proto.id}>
+                  <td className="font-medium">{proto.clave}</td>
+                  <td className="r text-ink-2">{Number(proto.superficie)}</td>
+                  <td className="r text-ink-2">{proto.recamaras}</td>
+                  {paquetes.map((paq) => {
+                    const precio = proto.precios.find((pr) => pr.paqueteId === paq.id);
+                    return (
+                      <td key={paq.id} className="r">
+                        {precio ? <Money valor={Number(precio.monto)} /> : <span className="text-muted">—</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <FormulariosProyecto
+        proyectoId={proyecto.id}
+        prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
+        paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
+      />
     </div>
   );
 }

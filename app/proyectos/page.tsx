@@ -1,48 +1,67 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { PageHead } from "@/components/ui";
 
 export default async function ProyectosPage() {
   const proyectos = await prisma.proyecto.findMany({
-    include: { desarrollador: true, unidades: true },
-    orderBy: { createdAt: "desc" },
+    include: {
+      desarrollador: true,
+      prototipos: true,
+      unidades: { include: { comprador: true } },
+    },
+    orderBy: { createdAt: "asc" },
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Proyectos</h1>
-        <Link
-          href="/proyectos/nuevo"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
-        >
-          + Nuevo proyecto
-        </Link>
-      </div>
+    <div className="flex flex-col gap-9">
+      <PageHead
+        eyebrow="Pipeline"
+        titulo="Proyectos"
+        descripcion="Cada desarrollo tiene sus propios prototipos, precios y porcentaje de comisión. Nada asume que haya un solo proyecto."
+        accion={
+          <Link href="/proyectos/nuevo" className="btn">
+            Nuevo proyecto
+          </Link>
+        }
+      />
 
-      {proyectos.length === 0 ? (
-        <p className="text-zinc-500">
-          Todavía no hay proyectos. Crea el primero para empezar.
-        </p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {proyectos.map((p) => (
+      <div className="grid gap-5 sm:grid-cols-2">
+        {proyectos.map((p) => {
+          const vendidas = p.unidades.filter((u) => u.comprador).length;
+          return (
             <Link
               key={p.id}
               href={`/proyectos/${p.id}`}
-              className="rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-400"
+              className="card flex flex-col gap-4 p-6 transition-colors hover:border-line-2"
             >
-              <div className="font-medium">{p.nombre}</div>
-              <div className="text-sm text-zinc-500">{p.desarrollador.nombre}</div>
-              <div className="mt-2 flex gap-4 text-xs text-zinc-500">
-                <span>{p.etapaPipeline}</span>
-                <span>{p.unidades.length} unidades</span>
-                <span>{Number(p.porcentajeAnticipo) * 100}% anticipo</span>
-                <span>{Number(p.porcentajeComision) * 100}% comisión</span>
+              <div>
+                <p className="label">{p.desarrollador.nombre}</p>
+                <h2 className="mt-1 text-[24px]">{p.nombre}</h2>
+              </div>
+              <div className="grid grid-cols-3 gap-4 border-t border-line pt-4 text-[13px]">
+                <div>
+                  <p className="label">Unidades</p>
+                  <p className="figure mt-1 text-[19px]">
+                    {vendidas}/{p.unidades.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="label">Anticipo</p>
+                  <p className="figure mt-1 text-[19px]">
+                    {(Number(p.porcentajeAnticipo) * 100).toFixed(0)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="label">Comisión</p>
+                  <p className="figure mt-1 text-[19px]">
+                    {(Number(p.porcentajeComision) * 100).toFixed(0)}%
+                  </p>
+                </div>
               </div>
             </Link>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

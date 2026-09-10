@@ -1,19 +1,297 @@
 @import "tailwindcss";
 
+/* Sistema de diseño día uno · tomado de la maqueta del sitio */
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --ground: #faf9f7;
+  --surface: #ffffff;
+  --surface-2: #f2f0ec;
+  --ink: #23211e;
+  --ink-2: #54504a;
+  --muted: #807a72;
+  --line: #e4e0d9;
+  --line-2: #d3cec5;
+  --accent: #3f5b4a;
+  --accent-soft: #e7ede7;
+  --warm: #b4643c;
+  --warm-soft: #f6eae2;
+  --dev: #2e4a6b;
+  --dev-soft: #e7eef6;
+  --r: 3px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-dev: var(--dev);
+  --color-dev-soft: var(--dev-soft);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-karla);
+  --font-mono: var(--font-plex-mono);
+  --radius-brand: var(--r);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-karla), "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  line-height: 1.12;
+  text-wrap: balance;
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--warm);
+  outline-offset: 3px;
+}
+
+/* Micro-etiqueta: versalitas espaciadas. El acento la marca como sección. */
+.eyebrow {
+  font-size: 11.5px;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Las cifras de dinero van en la serif, con numeración tabular. */
+.figure {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--ground);
+  border: 0;
+  font-family: var(--font-karla), sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 11px 20px;
+  border-radius: var(--r);
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover {
+  filter: brightness(1.12);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+.btn-warm {
+  background: var(--warm);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+}
+.btn-ghost:hover {
+  background: var(--surface-2);
+  filter: none;
+}
+.btn-sm {
+  font-size: 13px;
+  padding: 7px 13px;
+}
+
+.field label,
+.field > span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+select {
+  width: 100%;
+  font-family: var(--font-karla), sans-serif;
+  font-size: 15.5px;
+  padding: 10px 13px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+}
+input::placeholder {
+  color: var(--muted);
+}
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 19px) calc(50% + 1px), calc(100% - 13px) calc(50% + 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tbl th {
+  text-align: left;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 10px 9px;
+  border-bottom: 1px solid var(--line-2);
+  font-weight: 700;
+}
+.tbl td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.tbl tr:last-child td {
+  border-bottom: 0;
+}
+.tbl td.r,
+.tbl th.r {
+  text-align: right;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.chip.ok {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.chip.late {
+  background: var(--warm-soft);
+  color: var(--warm);
+}
+.chip.wait {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.chip.info {
+  background: var(--dev-soft);
+  color: var(--dev);
+}
+
+.kpi {
+  background: var(--surface-2);
+  padding: 14px 16px;
+  border-radius: var(--r);
+}
+.kpi .k {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.kpi .v {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* Nota del sistema: por qué una regla bloqueó algo. */
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 14px 17px;
+  border-radius: 0 var(--r) var(--r) 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.note.blocked {
+  border-left-color: var(--warm);
+  background: var(--warm-soft);
+}
+.note b {
+  color: var(--ink);
+}
+
+/* ── La cinta de exhibiciones: anticipo + 12, una marca cada una ── */
+.ribbon {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(12, 1fr);
+  gap: 3px;
+}
+.ribbon .m {
+  height: 34px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ribbon .m.pagada {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fbfaf8;
+}
+.ribbon .m.vencida {
+  background: var(--warm);
+  border-color: var(--warm);
+  color: #fbfaf8;
+}
+.ribbon .m.anticipo {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
