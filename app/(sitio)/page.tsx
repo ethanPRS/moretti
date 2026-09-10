@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calcularExhibiciones, DESCUENTO_CONTADO } from "@/lib/motor/calculo";
 import Cotizador, { type Desarrollo } from "./Cotizador";
+import Reveal from "@/components/Reveal";
 
 const { Decimal } = Prisma;
 
@@ -91,15 +92,27 @@ export default async function SitioPage() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[rgba(20,19,17,0.9)] via-[rgba(20,19,17,0.72)] to-[rgba(20,19,17,0.18)]" />
 
         <div className="mx-auto w-full max-w-[1080px] px-7 py-16">
-          <p className="eyebrow text-[#b9cdbe]">Barrio Roble · Barrio Santa Lucía</p>
-          <h1 className="mt-3.5 max-w-[17ch] text-[clamp(32px,4.4vw,52px)] text-[#fbfaf8]">
+          <p className="eyebrow hero-in text-[#b9cdbe]">
+            Barrio Roble · Barrio Santa Lucía
+          </p>
+          <h1
+            className="hero-in mt-3.5 max-w-[17ch] text-[clamp(32px,4.4vw,52px)] text-[#fbfaf8]"
+            style={{ "--hero-delay": "110ms" } as React.CSSProperties}
+          >
             Tu depa se entrega en obra blanca. No tiene que quedarse así.
           </h1>
-          <p className="mt-5 max-w-[46ch] text-[clamp(16px,1.6vw,19px)] text-[#dcd8d2]">
+          <p
+            className="hero-in mt-5 max-w-[46ch] text-[clamp(16px,1.6vw,19px)] text-[#dcd8d2]"
+            style={{ "--hero-delay": "220ms" } as React.CSSProperties}
+          >
             Cocina, clósets y clima instalados el día que recibes llaves. Lo pagas en
             mensualidades fijas mientras se construye, sin banco y sin tocar tu hipoteca.
           </p>
-          <a href="#cotiza" className="btn mt-8">
+          <a
+            href="#cotiza"
+            className="btn hero-in mt-8"
+            style={{ "--hero-delay": "330ms" } as React.CSSProperties}
+          >
             Cotizar mi depa
           </a>
         </div>
@@ -107,7 +120,7 @@ export default async function SitioPage() {
 
       <section id="cotiza" className="py-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <div className="max-w-[660px]">
+          <Reveal className="max-w-[660px]">
             <p className="eyebrow">Cotiza tu departamento</p>
             <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
               Dinos cuál es tu depa y te decimos cuánto.
@@ -116,28 +129,29 @@ export default async function SitioPage() {
               Cada prototipo lleva medidas distintas, así que el precio cambia. Elige el
               tuyo y mueve entre paquetes para comparar.
             </p>
-          </div>
+          </Reveal>
 
-          <div className="mt-8">
+          <Reveal className="mt-8" delay={120}>
             <Cotizador desarrollos={desarrollos} />
-          </div>
+          </Reveal>
         </div>
       </section>
 
       <section id="paquetes" className="bg-surface-2 py-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <div className="max-w-[660px]">
+          <Reveal className="max-w-[660px]">
             <p className="eyebrow">Los paquetes</p>
             <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
               Cuatro niveles. Cada uno incluye todo el anterior.
             </h2>
-          </div>
+          </Reveal>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {paquetes.map((p, i) => {
               const heredadas = paquetes.slice(0, i).flatMap((prev) => prev.partidas);
               return (
-                <article key={p.id} className="card flex flex-col overflow-hidden">
+                <Reveal key={p.id} delay={i * 90} className="flex">
+                  <article className="card lift flex flex-1 flex-col overflow-hidden">
                   {p.imagen && (
                     <div className="relative aspect-[4/3] bg-surface-2">
                       <Image
@@ -172,8 +186,9 @@ export default async function SitioPage() {
                         </li>
                       ))}
                     </ul>
-                  </div>
-                </article>
+                    </div>
+                  </article>
+                </Reveal>
               );
             })}
           </div>
@@ -182,22 +197,22 @@ export default async function SitioPage() {
 
       <section id="como" className="py-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <div className="max-w-[660px]">
+          <Reveal className="max-w-[660px]">
             <p className="eyebrow">Cómo funciona</p>
             <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
               Pagas mientras se construye. Recibes todo instalado.
             </h2>
-          </div>
+          </Reveal>
 
           <div className="mt-9 grid gap-9 sm:grid-cols-3">
             {PASOS.map((paso, i) => (
-              <div key={paso.titulo}>
+              <Reveal key={paso.titulo} delay={i * 110}>
                 <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft font-semibold text-accent">
                   {i + 1}
                 </div>
                 <h3 className="mt-3.5 text-[21px]">{paso.titulo}</h3>
                 <p className="mt-2 text-[15.5px] text-ink-2">{paso.texto}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -205,7 +220,7 @@ export default async function SitioPage() {
 
       <section className="pb-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <div className="card flex flex-col items-start gap-5 bg-surface-2 p-10 sm:p-12">
+          <Reveal className="card flex flex-col items-start gap-5 bg-surface-2 p-10 sm:p-12">
             <div>
               <p className="eyebrow">Aparta tu paquete</p>
               <h2 className="mt-2.5 max-w-[20ch] text-[clamp(25px,3.2vw,35px)]">
@@ -220,7 +235,7 @@ export default async function SitioPage() {
             <a href="#cotiza" className="btn">
               Cotizar mi depa
             </a>
-          </div>
+          </Reveal>
         </div>
       </section>
     </>

@@ -32,7 +32,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${fraunces.variable} ${karla.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {/* Sin JS no hay quién revele: se muestra todo de una vez. */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
+        {children}
+      </body>
     </html>
   );
 }

@@ -57,6 +57,63 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Movimiento ──
+   Todo va detrás de `no-preference`: quien pide menos movimiento no recibe
+   estados ocultos ni desplazamientos, solo la página quieta. */
+
+section[id] {
+  /* Que el nav pegajoso no tape el encabezado al saltar a una sección. */
+  scroll-margin-top: 84px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 0.61, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+
+  /* Entrada del hero al cargar, en secuencia. */
+  .hero-in {
+    animation: heroIn 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation-delay: var(--hero-delay, 0ms);
+  }
+
+  @keyframes heroIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .lift {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-color 0.35s ease;
+  }
+  .lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
 h1,
 h2,
 h3 {
