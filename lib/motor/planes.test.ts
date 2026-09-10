@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { calcularExhibiciones } from "./planes";
+import { calcularExhibiciones } from "./calculo";
 
 const { Decimal } = Prisma;
 

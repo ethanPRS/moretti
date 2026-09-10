@@ -1,8 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
-import { Money, ChipEstadoFinanciero } from "@/components/ui";
+import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
 
 export default async function PanelPage() {
   const [planes, unidadesLibres, pagos] = await Promise.all([
@@ -28,26 +27,11 @@ export default async function PanelPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="media relative aspect-[21/8] w-full">
-        <Image
-          src="/interior-hero.jpg"
-          alt="Departamento equipado: cocina integral, clima y sala"
-          fill
-          sizes="100vw"
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[rgba(20,19,17,0.86)] via-[rgba(20,19,17,0.55)] to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-center gap-2 p-8 sm:p-10">
-          <p className="eyebrow text-[#b9cdbe]">día uno · control</p>
-          <h1 className="max-w-[16ch] text-[clamp(26px,3.6vw,38px)] text-[#fbfaf8]">
-            La cartera completa
-          </h1>
-          <p className="max-w-[46ch] text-[15px] text-[#dcd8d2]">
-            Quién ya firmó, quién ya pagó y cuánta comisión se ha devengado.
-          </p>
-        </div>
-      </div>
+      <PageHead
+        eyebrow="día uno · control"
+        titulo="La cartera completa"
+        descripcion="Quién ya firmó, quién ya pagó y cuánta comisión se ha devengado. Todo contra el ambiente de pruebas."
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="kpi">
@@ -79,8 +63,8 @@ export default async function PanelPage() {
           <div>
             <h2 className="text-[22px]">Todavía no hay ningún plan</h2>
             <p className="mt-2 max-w-[52ch] text-ink-2">
-              Hay {unidadesLibres} unidades sin comprador. Entra a un proyecto, elige una unidad
-              libre y registra a su comprador para generar la primera cotización.
+              Hay {unidadesLibres} unidades sin comprador. Entra a un proyecto, elige una
+              unidad libre y registra a su comprador para generar la primera cotización.
             </p>
           </div>
           <Link href="/proyectos" className="btn">
@@ -119,7 +103,9 @@ export default async function PanelPage() {
                     </td>
                     <td>
                       {unidad.torre} {unidad.numero}
-                      <span className="block text-[12px] text-muted">{unidad.proyecto.nombre}</span>
+                      <span className="block text-[12px] text-muted">
+                        {unidad.proyecto.nombre}
+                      </span>
                     </td>
                     <td>{plan.paquete.nombre}</td>
                     <td className="r">
@@ -142,10 +128,11 @@ export default async function PanelPage() {
       {cotizaciones > 0 && (
         <p className="note">
           <b>
-            {cotizaciones} {cotizaciones === 1 ? "plan sigue" : "planes siguen"} en cotización.
+            {cotizaciones} {cotizaciones === 1 ? "plan sigue" : "planes siguen"} en
+            cotización.
           </b>{" "}
-          El precio no queda congelado hasta que se cobra el anticipo, y el anticipo no se puede
-          cobrar sin contrato firmado.
+          El precio no queda congelado hasta que se cobra el anticipo, y el anticipo no se
+          puede cobrar sin contrato firmado.
         </p>
       )}
     </div>
