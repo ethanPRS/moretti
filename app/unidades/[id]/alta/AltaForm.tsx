@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-type Opcion = { paqueteId: string; nombre: string; nivel: number; monto: number };
+type Opcion = {
+  paqueteId: string;
+  nombre: string;
+  nivel: number;
+  monto: number;
+  imagen: string | null;
+  descripcion: string | null;
+};
 
 const mx = (n: number) => "$" + Math.round(n).toLocaleString("es-MX");
 
@@ -62,7 +70,7 @@ export default function AltaForm({
                 type="button"
                 aria-pressed={o.paqueteId === paqueteId}
                 onClick={() => setPaqueteId(o.paqueteId)}
-                className={`rounded-brand border px-2 py-2.5 text-[13.5px] font-semibold transition-colors ${
+                className={`rounded-full border px-2 py-2.5 text-[13.5px] font-semibold transition-colors ${
                   o.paqueteId === paqueteId
                     ? "border-accent bg-accent text-ground"
                     : "border-line-2 bg-surface text-ink-2 hover:border-line-2 hover:bg-surface-2"
@@ -88,6 +96,19 @@ export default function AltaForm({
       </div>
 
       <div className="flex flex-col gap-5 border-t border-line bg-surface-2 p-7 md:border-l md:border-t-0">
+        {elegido.imagen && (
+          <div className="media relative aspect-[16/10]">
+            <Image
+              src={elegido.imagen}
+              alt={`Interior con el paquete ${elegido.nombre}`}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+              priority
+            />
+          </div>
+        )}
+
         <div>
           <p className="label">Precio del paquete {elegido.nombre}</p>
           <p className="figure mt-1.5 text-[clamp(34px,5vw,46px)] leading-none">
@@ -96,6 +117,9 @@ export default function AltaForm({
               + IVA · instalado
             </span>
           </p>
+          {elegido.descripcion && (
+            <p className="mt-1.5 text-[13.5px] text-muted">{elegido.descripcion}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-5 border-t border-line-2 pt-5">

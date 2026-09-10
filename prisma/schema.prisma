@@ -22,6 +22,7 @@ model Proyecto {
   desarrolladorId    String
   nombre             String
   etapaPipeline      String        @default("Vendiendo")
+  imagen             String?
   numeroUnidades     Int
   /// Parámetros de configuración, nunca constantes en el código (spec §12).
   porcentajeAnticipo Decimal       @default(0.30) @db.Decimal(5, 4)
@@ -47,13 +48,15 @@ model Prototipo {
 }
 
 model Paquete {
-  id        String   @id @default(cuid())
-  nivel     Int      @unique
-  nombre    String
-  partidas  String[]
-  precios   Precio[]
-  planes    Plan[]
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  nivel       Int      @unique
+  nombre      String
+  descripcion String?
+  imagen      String?
+  partidas    String[]
+  precios     Precio[]
+  planes      Plan[]
+  createdAt   DateTime @default(now())
 }
 
 /// Versionado: nunca se sobreescribe. Un precio nuevo cierra la vigencia del anterior.

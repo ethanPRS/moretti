@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
-import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
+import { Money, ChipEstadoFinanciero } from "@/components/ui";
 
 export default async function PanelPage() {
   const [planes, unidadesLibres, pagos] = await Promise.all([
@@ -27,11 +28,26 @@ export default async function PanelPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <PageHead
-        eyebrow="día uno · control"
-        titulo="La cartera completa"
-        descripcion="Quién ya firmó, quién ya pagó y cuánta comisión se ha devengado. Todo contra el ambiente de pruebas."
-      />
+      <div className="media relative aspect-[21/8] w-full">
+        <Image
+          src="/interior-hero.jpg"
+          alt="Departamento equipado: cocina integral, clima y sala"
+          fill
+          sizes="100vw"
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[rgba(20,19,17,0.86)] via-[rgba(20,19,17,0.55)] to-transparent" />
+        <div className="absolute inset-0 flex flex-col justify-center gap-2 p-8 sm:p-10">
+          <p className="eyebrow text-[#b9cdbe]">día uno · control</p>
+          <h1 className="max-w-[16ch] text-[clamp(26px,3.6vw,38px)] text-[#fbfaf8]">
+            La cartera completa
+          </h1>
+          <p className="max-w-[46ch] text-[15px] text-[#dcd8d2]">
+            Quién ya firmó, quién ya pagó y cuánta comisión se ha devengado.
+          </p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="kpi">

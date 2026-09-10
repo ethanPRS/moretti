@@ -1,6 +1,9 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
+import {
+  generarPlan,
+  registrarContrato,
+  cobrarExhibicion,
+} from "../lib/motor/planes";
 
 /** Catálogo real tomado del cotizador de la maqueta del sitio. */
 const CATALOGO: Record<
@@ -26,12 +29,52 @@ const CATALOGO: Record<
   ],
 };
 
+/** Contenido y renders tomados de la maqueta del sitio. */
 const PAQUETES = [
-  { nivel: 1, nombre: "Casa Lista", partidas: ["Cocina integral", "Clósets", "Minisplits"] },
-  { nivel: 2, nombre: "Confort", partidas: ["Todo Casa Lista", "Panel PVC", "Cuarto de lavado"] },
-  { nivel: 3, nombre: "Plus", partidas: ["Todo Confort", "Estufa", "Refrigerador", "Lavadora"] },
-  { nivel: 4, nombre: "Total", partidas: ["Todo Plus", "Pantalla", "Vale de mueblería"] },
+  {
+    nivel: 1,
+    nombre: "Casa Lista",
+    descripcion: "Lo indispensable para habitar",
+    imagen: "/paquetes/casa-lista.jpg",
+    partidas: [
+      "Cocina integral sobre diseño",
+      "Clósets de recámaras",
+      "Carpintería complementaria",
+    ],
+  },
+  {
+    nivel: 2,
+    nombre: "Confort",
+    descripcion: "Todo lo anterior, más el clima",
+    imagen: "/paquetes/confort.jpg",
+    partidas: ["Clima minisplit inverter en sala y en cada recámara"],
+  },
+  {
+    nivel: 3,
+    nombre: "Plus",
+    descripcion: "Todo lo anterior, más los remates",
+    imagen: "/paquetes/plus.jpg",
+    partidas: ["Muro decorativo en sala", "Cuarto de lavado equipado"],
+  },
+  {
+    nivel: 4,
+    nombre: "Total",
+    descripcion: "Listo para mudarte el mismo día",
+    imagen: "/paquetes/total.jpg",
+    partidas: [
+      "Pantalla de gran formato",
+      "Refrigerador",
+      "Lavadora",
+      "Estufa",
+      "Vale de muebles para estrenar",
+    ],
+  },
 ];
+
+const IMAGEN_PROYECTO: Record<string, string> = {
+  "Barrio Roble": "/interior-hero.jpg",
+  "Barrio Santa Lucía": "/paquetes/total.jpg",
+};
 
 const UNIDADES: Record<string, { torre: string; numero: string; clave: string }[]> = {
   "Barrio Roble": [
@@ -68,6 +111,7 @@ async function main() {
         desarrolladorId: pissa.id,
         nombre: nombreProyecto,
         etapaPipeline: "Vendiendo",
+        imagen: IMAGEN_PROYECTO[nombreProyecto],
         numeroUnidades: prototipos.length * 9,
         porcentajeAnticipo: 0.3,
         porcentajeComision: 0.15,
@@ -106,10 +150,47 @@ async function main() {
     });
   }
 
+  await compradorDeEjemplo();
+
   const unidades = await prisma.unidad.count();
   console.log(
     `Seed listo · PISSA · ${Object.keys(CATALOGO).length} proyectos · ${PAQUETES.length} paquetes · ${unidades} unidades`
   );
+}
+
+/** Un expediente ya avanzado, para que el panel no se vea vacío al abrirlo. */
+async function compradorDeEjemplo() {
+  const unidad = await prisma.unidad.findFirst({
+    where: { numero: "717", torre: "BR" },
+  });
+  const confort = await prisma.paquete.findUnique({ where: { nivel: 2 } });
+  if (!unidad || !confort) return;
+
+  const comprador = await prisma.comprador.create({
+    data: {
+      nombre: "Lucía Menchaca",
+      contacto: "81 8100 4412",
+      unidadId: unidad.id,
+      folio: "DU-001",
+    },
+  });
+
+  const plan = await generarPlan({ compradorId: comprador.id, paqueteId: confort.id });
+
+  await registrarContrato({
+    unidadId: unidad.id,
+    archivoNombre: "contrato-BR717-menchaca.pdf",
+    quienFirmo: "Lucía Menchaca",
+    fechaFirma: new Date("2026-09-10T12:00:00"),
+  });
+
+  const exhibiciones = await prisma.exhibicion.findMany({
+    where: { planId: plan.id, numero: { in: [0, 1, 2] } },
+    orderBy: { numero: "asc" },
+  });
+  for (const ex of exhibiciones) {
+    await cobrarExhibicion(ex.id);
+  }
 }
 
 main()

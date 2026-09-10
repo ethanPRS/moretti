@@ -45,6 +45,8 @@ export default async function AltaPage({ params }: { params: Promise<{ id: strin
     nombre: pr.paquete.nombre,
     nivel: pr.paquete.nivel,
     monto: Number(pr.monto),
+    imagen: pr.paquete.imagen,
+    descripcion: pr.paquete.descripcion,
   }));
 
   return (

@@ -4,7 +4,7 @@ import {
   EstadoExhibicion,
   EstadoFinanciero,
 } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../prisma";
 
 const { Decimal } = Prisma;
 

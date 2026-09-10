@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
@@ -28,10 +29,18 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   });
   if (!plan) notFound();
 
-  const eventos = await prisma.evento.findMany({
-    where: { entidadTipo: "plan", entidadId: plan.id },
-    orderBy: { fecha: "desc" },
-  });
+  const [eventos, nivelesIncluidos] = await Promise.all([
+    prisma.evento.findMany({
+      where: { entidadTipo: "plan", entidadId: plan.id },
+      orderBy: { fecha: "desc" },
+    }),
+    // Los paquetes son acumulativos: incluye todo lo de los niveles anteriores.
+    prisma.paquete.findMany({
+      where: { nivel: { lte: plan.paquete.nivel } },
+      orderBy: { nivel: "asc" },
+    }),
+  ]);
+  const incluye = nivelesIncluidos.flatMap((p) => p.partidas);
 
   const unidad = plan.comprador.unidad;
   const contrato = unidad.contrato;
@@ -52,6 +61,28 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         descripcion={`${unidad.proyecto.nombre} · ${unidad.torre} ${unidad.numero} · ${unidad.prototipo.clave} · paquete ${plan.paquete.nombre}`}
         accion={<ChipEstadoPlan estado={plan.estado} />}
       />
+
+      {plan.paquete.imagen && (
+        <div className="card flex flex-col gap-5 overflow-hidden p-5 sm:flex-row sm:items-center">
+          <div className="media relative aspect-[4/3] w-full shrink-0 sm:w-52">
+            <Image
+              src={plan.paquete.imagen}
+              alt={`Interior con el paquete ${plan.paquete.nombre}`}
+              fill
+              sizes="(max-width: 640px) 100vw, 208px"
+              className="object-cover"
+            />
+          </div>
+          <div>
+            <p className="eyebrow">Lo que contrató</p>
+            <h2 className="mt-1.5 text-[22px]">Paquete {plan.paquete.nombre}</h2>
+            <p className="mt-1 text-[14px] text-muted">{plan.paquete.descripcion}</p>
+            <p className="mt-3 max-w-[58ch] text-[13.5px] text-ink-2">
+              {incluye.join(" · ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="card grid grid-cols-2 gap-7 p-7 sm:grid-cols-4">
         <Stat
