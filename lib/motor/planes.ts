@@ -5,6 +5,8 @@ import {
   EstadoFinanciero,
   ModalidadPlan,
   OrigenRenglon,
+  EstadoIntentoCobro,
+  EstadoPago,
 } from "@prisma/client";
 import { prisma } from "../prisma";
 import { pasarela as pasarelaPorDefecto, type Pasarela, type SolicitudCobro } from "../pasarela";
@@ -42,6 +44,17 @@ export class PasarelaError extends Error {
 }
 
 type Tx = Prisma.TransactionClient;
+
+export type IntentoCobroPreparado = {
+  id: string;
+  planId: string;
+  exhibicionId: string;
+  monto: Prisma.Decimal;
+  porcentajeComision: Prisma.Decimal;
+  montoComision: Prisma.Decimal;
+  idempotencyKey: string;
+  stripeAccountId: string;
+};
 
 function fechaMasMeses(base: Date, meses: number) {
   const d = new Date(base);
@@ -761,6 +774,186 @@ async function seguirCaminoFinanciero(
 // ─────────────────────────────────────────────────────────────────────────
 // Contrato (R1)
 // ─────────────────────────────────────────────────────────────────────────
+/**
+ * Prepara un cobro Stripe, pero no aplica dinero al plan. El webhook es el
+ * único camino que convierte este intento en Pago y actualiza el saldo.
+ */
+export async function prepararIntentoCobro(exhibicionId: string) {
+  const exhibicion = await prisma.exhibicion.findUnique({
+    where: { id: exhibicionId },
+    include: {
+      plan: {
+        include: {
+          comprador: { include: { unidad: { include: { proyecto: true, contrato: true } } } },
+        },
+      },
+    },
+  });
+  if (!exhibicion) throw new ReglaError("No se encontró la exhibición.");
+
+  const { plan } = exhibicion;
+  const unidad = plan.comprador.unidad;
+  const stripeAccountId = unidad.proyecto.stripeConnectedAccountId;
+
+  if (!stripeAccountId) {
+    throw new ReglaError("El proyecto no tiene configurada la cuenta Stripe de Moretti.");
+  }
+  if (!unidad.contrato) {
+    throw new ReglaError("No se puede cobrar: falta el contrato firmado con Moretti.");
+  }
+  if (exhibicion.numero > 0 && !plan.fechaCongelamiento) {
+    throw new ReglaError("No se puede cobrar una mensualidad antes del anticipo.");
+  }
+  if (exhibicion.estado === EstadoExhibicion.PAGADA) {
+    throw new ReglaError("Esta exhibición ya está pagada.");
+  }
+
+  const porcentajeComision = new Decimal(unidad.proyecto.porcentajeComision);
+  const monto = new Decimal(exhibicion.monto);
+  const montoComision = monto.mul(porcentajeComision).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const idempotencyKey = `exhibicion_${exhibicion.id}`;
+  const existing = await prisma.intentoCobro.findUnique({ where: { idempotencyKey } });
+
+  if (existing) {
+    if (existing.estado === EstadoIntentoCobro.CONFIRMADO) {
+      throw new ReglaError("Esta exhibición ya tiene un cobro confirmado.");
+    }
+    return {
+      id: existing.id,
+      planId: existing.planId,
+      exhibicionId: existing.exhibicionId,
+      monto: new Decimal(existing.monto),
+      porcentajeComision: new Decimal(existing.porcentajeComision),
+      montoComision: new Decimal(existing.montoComision),
+      idempotencyKey: existing.idempotencyKey,
+      stripeAccountId: existing.stripeAccountId,
+      stripePaymentIntentId: existing.stripePaymentIntentId,
+    };
+  }
+
+  return prisma.intentoCobro.create({
+    data: {
+      exhibicionId: exhibicion.id,
+      planId: plan.id,
+      idempotencyKey,
+      stripeAccountId,
+      monto,
+      porcentajeComision,
+      montoComision,
+    },
+  });
+}
+
+/** Aplica un PaymentIntent confirmado exactamente una vez. */
+export async function confirmarCobroStripe(params: {
+  paymentIntentId: string;
+  stripeAccountId: string;
+  stripeChargeId?: string;
+}) {
+  const intento = await prisma.intentoCobro.findUnique({
+    where: { stripePaymentIntentId: params.paymentIntentId },
+    include: { exhibicion: true },
+  });
+  if (!intento) throw new ReglaError("No se encontró el intento de cobro para este PaymentIntent.");
+  if (intento.stripeAccountId !== params.stripeAccountId) {
+    throw new ReglaError("La cuenta Stripe del evento no coincide con el intento.");
+  }
+  if (intento.estado === EstadoIntentoCobro.CONFIRMADO) return;
+
+  await prisma.$transaction(async (tx) => {
+    const locked = await tx.intentoCobro.findUnique({
+      where: { id: intento.id },
+      include: { exhibicion: true },
+    });
+    if (!locked || locked.estado === EstadoIntentoCobro.CONFIRMADO) return;
+
+    const plan = await tx.plan.findUnique({
+      where: { id: locked.planId },
+      include: { comprador: { include: { unidad: true } } },
+    });
+    if (!plan) throw new ReglaError("No se encontró el plan del intento de cobro.");
+
+    const nuevoSaldo = new Decimal(plan.saldo).sub(new Decimal(locked.monto));
+    const esAnticipo = locked.exhibicion.numero === 0;
+    const liquidado = nuevoSaldo.lte(0);
+
+    await tx.pago.create({
+      data: {
+        planId: locked.planId,
+        exhibicionId: locked.exhibicionId,
+        monto: locked.monto,
+        referenciaStripe: params.paymentIntentId,
+        stripePaymentIntentId: params.paymentIntentId,
+        stripeChargeId: params.stripeChargeId,
+        stripeAccountId: params.stripeAccountId,
+        estado: EstadoPago.CONFIRMADO,
+        porcentajeComision: locked.porcentajeComision,
+        montoComision: locked.montoComision,
+      },
+    });
+    await tx.exhibicion.update({
+      where: { id: locked.exhibicionId },
+      data: { estado: EstadoExhibicion.PAGADA },
+    });
+    await tx.plan.update({
+      where: { id: locked.planId },
+      data: {
+        estado: esAnticipo ? EstadoPlan.ACTIVO : liquidado ? EstadoPlan.LIQUIDADO : EstadoPlan.ACTIVO,
+        fechaCongelamiento: esAnticipo ? new Date() : undefined,
+        saldo: nuevoSaldo.lt(0) ? 0 : nuevoSaldo,
+      },
+    });
+    await tx.unidad.update({
+      where: { id: plan.comprador.unidad.id },
+      data: {
+        estadoFinanciero: esAnticipo
+          ? EstadoFinanciero.APARTADO
+          : liquidado
+            ? EstadoFinanciero.LIQUIDADO
+            : EstadoFinanciero.AL_CORRIENTE,
+      },
+    });
+    await tx.intentoCobro.update({
+      where: { id: locked.id },
+      data: { estado: EstadoIntentoCobro.CONFIRMADO },
+    });
+    await tx.evento.create({
+      data: {
+        entidadTipo: "plan",
+        entidadId: plan.id,
+        tipo: esAnticipo ? "anticipo_cobrado" : "exhibicion_cobrada",
+        estadoNuevo: esAnticipo
+          ? EstadoFinanciero.APARTADO
+          : liquidado
+            ? EstadoFinanciero.LIQUIDADO
+            : EstadoFinanciero.AL_CORRIENTE,
+        comentario: `Stripe confirmó ${esAnticipo ? "el anticipo" : `la exhibición ${locked.exhibicion.numero}`} por $${new Decimal(locked.monto).toFixed(2)}.`,
+      },
+    });
+  });
+}
+
+export async function marcarIntentoCobroFallido(params: {
+  paymentIntentId: string;
+  stripeAccountId: string;
+  codigo?: string;
+  mensaje?: string;
+}) {
+  const intento = await prisma.intentoCobro.findUnique({
+    where: { stripePaymentIntentId: params.paymentIntentId },
+  });
+  if (!intento || intento.stripeAccountId !== params.stripeAccountId) return;
+  if (intento.estado === EstadoIntentoCobro.CONFIRMADO) return;
+
+  await prisma.intentoCobro.update({
+    where: { id: intento.id },
+    data: {
+      estado: EstadoIntentoCobro.FALLIDO,
+      codigoFallo: params.codigo,
+      mensajeFallo: params.mensaje,
+    },
+  });
+}
 
 export async function registrarContrato(params: {
   unidadId: string;
