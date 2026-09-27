@@ -252,21 +252,46 @@ enum OrigenRenglon {
 /// anticipo se congela la lista completa, no sólo el total (R2): después no
 /// hay ninguna operación del motor que cambie un renglón de precio.
 model RenglonPlan {
-  id              String        @id @default(cuid())
-  plan            Plan          @relation(fields: [planId], references: [id])
+  id              String           @id @default(cuid())
+  plan            Plan             @relation(fields: [planId], references: [id])
   planId          String
-  partida         Partida       @relation(fields: [partidaId], references: [id])
+  partida         Partida          @relation(fields: [partidaId], references: [id])
   partidaId       String
   cantidad        Int
   /// Precio de lista por pieza al momento de cotizar (copia de PrecioPartida).
-  precioLista     Decimal       @db.Decimal(12, 2)
+  precioLista     Decimal          @db.Decimal(12, 2)
   /// Lo que el renglón suma al plan, cantidad incluida. En un paquete cerrado
   /// es su parte del precio de conjunto (docs/decisiones.md, D-05).
-  precioCongelado Decimal       @db.Decimal(12, 2)
+  precioCongelado Decimal          @db.Decimal(12, 2)
   origen          OrigenRenglon
-  createdAt       DateTime      @default(now())
+  /// La opción de acabado que eligió el comprador, tal como está en
+  /// Partida.acabados («Opción 2 · Nogal»). Cambia hasta el levantamiento (R6).
+  acabado         String?
+  /// Hasta dos, para la orden de producción (S1-05).
+  fotos           FotoReferencia[]
+  createdAt       DateTime         @default(now())
 
   @@unique([planId, partidaId, origen])
+}
+
+/// Una foto que sube el comprador para que Moretti vea lo que imagina: el
+/// panel que vio en el catálogo, el color exacto. No sustituye al acabado:
+/// lo acompaña. El archivo vive detrás de lib/almacenamiento (D-12).
+model FotoReferencia {
+  id             String      @id @default(cuid())
+  renglon        RenglonPlan @relation(fields: [renglonId], references: [id])
+  renglonId      String
+  /// 1 o 2. Con el índice único, dos subidas simultáneas no dejan tres fotos.
+  posicion       Int
+  /// Dónde quedó en el almacenamiento. Nunca un nombre que mande el navegador.
+  clave          String      @unique
+  nombreOriginal String
+  /// image/jpeg o image/png, según el contenido del archivo (D-11).
+  tipo           String
+  bytes          Int
+  createdAt      DateTime    @default(now())
+
+  @@unique([renglonId, posicion])
 }
 
 enum EstadoExhibicion {

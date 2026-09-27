@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { EstadoExhibicion, EstadoPlan, ModalidadPlan } from "@prisma/client";
+import { EstadoExhibicion, EstadoOperativo, EstadoPlan, ModalidadPlan } from "@prisma/client";
 import {
   PageHead,
   Money,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui";
 import CobrarButton from "./CobrarButton";
 import ContratoForm from "./ContratoForm";
+import AcabadoYFotos from "./AcabadoYFotos";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -26,7 +27,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         },
       },
       paquete: true,
-      renglones: { include: { partida: true } },
+      renglones: { include: { partida: true, fotos: { orderBy: { posicion: "asc" } } } },
       exhibiciones: { orderBy: { numero: "asc" }, include: { pago: true } },
     },
   });
@@ -43,6 +44,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   );
   const sumaRenglones = renglones.reduce((acc, r) => acc + Number(r.precioCongelado), 0);
   const cuadra = sumaRenglones === Number(plan.montoCongelado);
+  // R6: el acabado y las fotos se cambian hasta el levantamiento en obra.
+  const bloqueoAcabados =
+    plan.estado === EstadoPlan.CANCELADO
+      ? "El plan está cancelado: ya no se cambian acabados ni fotos."
+      : plan.comprador.unidad.estadoOperativo !== EstadoOperativo.PENDIENTE
+        ? "Ya se hizo el levantamiento en obra: el acabado y las fotos quedaron fijos (R6)."
+        : null;
   const etiqueta =
     plan.modalidad === ModalidadPlan.ARMA_EL_TUYO
       ? plan.paquete.nombre
@@ -131,6 +139,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             <thead>
               <tr>
                 <th>Partida</th>
+                <th>Acabado</th>
                 <th className="r">Cantidad</th>
                 <th className="r">Lista por pieza</th>
                 <th className="r">En este plan</th>
@@ -148,6 +157,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                       )}
                     </span>
                   </td>
+                  <td className={r.acabado ? "" : "text-muted"}>
+                    {r.acabado
+                      ? r.acabado.replace(/^Opción \d+ · /, "")
+                      : r.partida.acabados
+                        ? "Sin elegir"
+                        : "—"}
+                  </td>
                   <td className="r">{r.cantidad}</td>
                   <td className="r text-muted">
                     <Money valor={Number(r.precioLista)} />
@@ -160,7 +176,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3} className="font-medium">
+                <td colSpan={4} className="font-medium">
                   Total {cuadra ? "· cuadra al peso con el plan (R7)" : "· NO cuadra con el plan"}
                 </td>
                 <td className={`r font-semibold ${cuadra ? "" : "text-warm"}`}>
@@ -169,6 +185,29 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               </tr>
             </tfoot>
           </table>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <p className="label">Acabados y fotos de referencia</p>
+          <p className="mt-1.5 max-w-[70ch] text-[13px] text-ink-2">
+            Lo que eligió el comprador viaja con la compra: al Anexo A, al expediente y a la orden
+            de producción de Moretti. Se puede cambiar hasta el levantamiento en obra.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {renglones.map((r) => (
+            <AcabadoYFotos
+              key={r.id}
+              renglonId={r.id}
+              nombre={r.cantidad > 1 ? `${r.partida.nombre} ×${r.cantidad}` : r.partida.nombre}
+              opciones={(r.partida.acabados as [string, string][] | null) ?? null}
+              elegido={r.acabado}
+              fotos={r.fotos.map((f) => ({ id: f.id, nombre: f.nombreOriginal }))}
+              bloqueo={bloqueoAcabados}
+            />
+          ))}
         </div>
       </section>
 

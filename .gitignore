@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fotos de referencia en disco local (lib/almacenamiento, D-12)
+/almacen
