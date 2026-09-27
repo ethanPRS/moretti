@@ -6,9 +6,10 @@ export const metadata: Metadata = {
 };
 
 const enlaces = [
-  { href: "/panel", label: "Cartera" },
-  { href: "/proyectos", label: "Proyectos" },
-  { href: "/paquetes", label: "Paquetes" },
+  { href: "/admin", label: "Cartera" },
+  { href: "/admin/pagos", label: "Pagos" },
+  { href: "/admin/proyectos", label: "Proyectos" },
+  { href: "/admin/catalogo", label: "Paquetes" },
 ];
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +17,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-ground">
         <nav className="mx-auto flex max-w-[1080px] items-center justify-between gap-6 px-7 py-4">
-          <Link href="/panel" className="leading-none">
+          <Link href="/admin" className="leading-none">
             <span className="font-display text-[21px] font-bold tracking-[-0.015em]">
               día uno
             </span>
