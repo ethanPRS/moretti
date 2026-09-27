@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { calcularExhibiciones, DESCUENTO_CONTADO } from "@/lib/motor/calculo";
 import Cotizador, { type Desarrollo } from "./Cotizador";
 import Reveal from "@/components/Reveal";
+import Link from "next/link";
 
 const { Decimal } = Prisma;
 
@@ -36,6 +37,8 @@ export default async function SitioPage() {
               include: { paquete: true },
               orderBy: { paquete: { nivel: "asc" } },
             },
+            // Precio de lista por partida: la base de «Arma el tuyo».
+            preciosPartida: { include: { partida: true } },
           },
           orderBy: { clave: "asc" },
         },
@@ -50,6 +53,8 @@ export default async function SitioPage() {
   const desarrollos: Desarrollo[] = proyectos.map((proyecto) => ({
     id: proyecto.id,
     nombre: proyecto.nombre,
+    // En puntos base, para que el cotizador calcule con enteros exactos.
+    anticipoBP: Math.round(Number(proyecto.porcentajeAnticipo) * 10000),
     prototipos: proyecto.prototipos
       .filter((proto) => proto.precios.length > 0)
       .map((proto) => ({
@@ -57,6 +62,18 @@ export default async function SitioPage() {
         clave: proto.clave,
         superficie: Number(proto.superficie),
         recamaras: proto.recamaras,
+        climasDefault: proto.climasDefault,
+        partidas: proto.preciosPartida
+          .filter((pp) => pp.partida.armable)
+          .sort((a, b) => a.partida.orden - b.partida.orden)
+          .map((pp) => ({
+            clave: pp.partida.clave,
+            nombre: pp.partida.nombre,
+            familia: pp.partida.familia,
+            porEquipo: pp.partida.porEquipo,
+            porDefecto: pp.partida.porDefecto,
+            precio: Number(pp.monto),
+          })),
         cotizaciones: proto.precios.map((precio) => {
           const exhibiciones = calcularExhibiciones(
             new Decimal(precio.monto),
@@ -77,6 +94,9 @@ export default async function SitioPage() {
         }),
       })),
   }));
+
+  const armable = paquetes.find((p) => p.esArmable);
+  const cerrados = paquetes.filter((p) => !p.esArmable);
 
   return (
     <>
@@ -132,7 +152,11 @@ export default async function SitioPage() {
           </Reveal>
 
           <Reveal className="mt-8" delay={120}>
-            <Cotizador desarrollos={desarrollos} />
+            <Cotizador
+              desarrollos={desarrollos}
+              armable={armable ? { id: armable.id, nombre: armable.nombre, nivel: armable.nivel } : null}
+              descuentoContado={DESCUENTO_CONTADO}
+            />
           </Reveal>
         </div>
       </section>
@@ -142,56 +166,103 @@ export default async function SitioPage() {
           <Reveal className="max-w-[660px]">
             <p className="eyebrow">Los paquetes</p>
             <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Cuatro niveles. Cada uno incluye todo el anterior.
+              Cuatro niveles, o armas el tuyo.
             </h2>
           </Reveal>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {paquetes.map((p, i) => {
-              const heredadas = paquetes.slice(0, i).flatMap((prev) => prev.partidas);
+            {cerrados.map((p, i) => {
+              const heredadas = cerrados.slice(0, i).flatMap((prev) => prev.partidas);
               return (
                 <Reveal key={p.id} delay={i * 90} className="flex">
                   <article className="card lift flex flex-1 flex-col overflow-hidden">
-                  {p.imagen && (
-                    <div className="relative aspect-[4/3] bg-surface-2">
-                      <Image
-                        src={p.imagen}
-                        alt={`Interior con el paquete ${p.nombre}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col gap-3 p-5">
-                    <div>
-                      <p className="eyebrow">Paquete 0{p.nivel}</p>
-                      <h3 className="mt-1.5 text-[23px]">{p.nombre}</h3>
-                      <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
-                    </div>
-                    <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
-                      {heredadas.map((partida) => (
-                        <li key={partida} className="relative pl-4 text-muted">
-                          <span className="absolute left-0 text-line-2">·</span>
-                          {partida}
-                        </li>
-                      ))}
-                      {p.partidas.map((partida) => (
-                        <li
-                          key={partida}
-                          className="relative pl-4 font-semibold text-ink"
-                        >
-                          <span className="absolute left-0 font-bold text-accent">+</span>
-                          {partida}
-                        </li>
-                      ))}
-                    </ul>
+                    {p.imagen && (
+                      <div className="relative aspect-[4/3] bg-surface-2">
+                        <Image
+                          src={p.imagen}
+                          alt={`Interior con el paquete ${p.nombre}`}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-1 flex-col gap-3 p-5">
+                      <div>
+                        <p className="eyebrow">Paquete 0{p.nivel}</p>
+                        <h3 className="mt-1.5 text-[23px]">{p.nombre}</h3>
+                        <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
+                      </div>
+                      <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
+                        {heredadas.map((partida) => (
+                          <li key={partida} className="relative pl-4 text-muted">
+                            <span className="absolute left-0 text-line-2">·</span>
+                            {partida}
+                          </li>
+                        ))}
+                        {p.partidas.map((partida) => (
+                          <li key={partida} className="relative pl-4 font-semibold text-ink">
+                            <span className="absolute left-0 font-bold text-accent">+</span>
+                            {partida}
+                          </li>
+                        ))}
+                      </ul>
+                      <Link
+                        href={`/paquetes/${p.slug}`}
+                        className="btn btn-ghost btn-sm mt-auto self-start"
+                      >
+                        Ver qué incluye →
+                      </Link>
                     </div>
                   </article>
                 </Reveal>
               );
             })}
           </div>
+
+          {armable && (
+            <Reveal className="mt-5" delay={120}>
+              <article className="card lift grid overflow-hidden md:grid-cols-[1fr_1.4fr]">
+                {armable.imagen && (
+                  <div className="relative aspect-[4/3] bg-surface-2 md:aspect-auto">
+                    <Image
+                      src={armable.imagen}
+                      alt={`Interior con el paquete ${armable.nombre}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 40vw"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-4 p-7 sm:p-9">
+                  <div>
+                    <p className="eyebrow text-warm">Paquete 0{armable.nivel} · a tu medida</p>
+                    <h3 className="mt-1.5 text-[27px]">{armable.nombre}</h3>
+                    <p className="mt-1.5 max-w-[52ch] text-ink-2">
+                      Sin cocina. Marca solo lo que quieras, pieza por pieza, a precio de
+                      lista. Tú decides cuántos climas lleva tu depa.
+                    </p>
+                  </div>
+                  <ul className="grid gap-1.5 border-t border-line pt-4 text-[14px] sm:grid-cols-2">
+                    {armable.partidas.map((partida) => (
+                      <li key={partida} className="relative pl-4 text-ink">
+                        <span className="absolute left-0 font-bold text-warm">+</span>
+                        {partida}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto flex flex-wrap gap-3 pt-2">
+                    <a href="#cotiza" className="btn btn-warm btn-sm">
+                      Armar el mío
+                    </a>
+                    <Link href={`/paquetes/${armable.slug}`} className="btn btn-ghost btn-sm">
+                      Ver qué incluye →
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
+          )}
         </div>
       </section>
 

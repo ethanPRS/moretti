@@ -6,6 +6,16 @@ export async function GET() {
   return NextResponse.json(paquetes);
 }
 
+/** El slug es la dirección pública del paquete: /paquetes/<slug>. */
+function slugify(nombre: string) {
+  return nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export async function POST(req: NextRequest) {
   const { nivel, nombre, partidas } = await req.json();
   if (!nivel || !nombre) {
@@ -14,6 +24,7 @@ export async function POST(req: NextRequest) {
   const paquete = await prisma.paquete.create({
     data: {
       nivel: Number(nivel),
+      slug: slugify(nombre),
       nombre,
       partidas: Array.isArray(partidas)
         ? partidas

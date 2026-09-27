@@ -1,38 +1,17 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import {
   generarPlan,
   registrarContrato,
   cobrarExhibicion,
 } from "../lib/motor/planes";
-
-/** Catálogo real tomado del cotizador de la maqueta del sitio. */
-const CATALOGO: Record<
-  string,
-  { clave: string; m2: number; rec: number; precios: [number, number, number, number] }[]
-> = {
-  "Barrio Roble": [
-    { clave: "DEPA 2R (tipo 717)", m2: 57.7, rec: 2, precios: [147300, 176200, 195600, 375800] },
-    { clave: "DEPA 2R-T", m2: 60.0, rec: 2, precios: [145700, 174700, 192400, 372500] },
-    { clave: "DEPA 3R-T", m2: 78.0, rec: 3, precios: [212700, 251300, 270700, 450800] },
-    { clave: "DEPA FLEX", m2: 70.0, rec: 3, precios: [169500, 208000, 225700, 405900] },
-    { clave: "DEPA DUPLEX", m2: 95.0, rec: 2, precios: [213600, 242500, 261900, 442000] },
-    { clave: "GARDEN VILLA", m2: 63.0, rec: 2, precios: [186200, 215100, 234500, 414700] },
-    { clave: "GARDEN VILLA FLEX", m2: 87.1, rec: 3, precios: [209200, 247800, 267200, 447300] },
-  ],
-  "Barrio Santa Lucía": [
-    { clave: "DEPA A", m2: 58.0, rec: 2, precios: [178300, 207200, 224900, 405100] },
-    { clave: "DEPA B", m2: 52.0, rec: 2, precios: [98900, 127800, 145500, 325600] },
-    { clave: "DEPA C", m2: 55.0, rec: 2, precios: [136500, 165400, 183100, 363200] },
-    { clave: "DEPA D", m2: 33.0, rec: 1, precios: [76200, 85800, 101900, 282000] },
-    { clave: "DEPA E", m2: 38.0, rec: 1, precios: [77500, 87200, 103200, 283300] },
-    { clave: "DEPA F", m2: 44.0, rec: 1, precios: [91600, 110900, 126900, 307100] },
-  ],
-};
+import { CATALOGO, PARTIDAS, PAQUETE_PARTIDAS } from "./catalogo";
 
 /** Contenido y renders tomados de la maqueta del sitio. */
 const PAQUETES = [
   {
     nivel: 1,
+    slug: "casa-lista",
     nombre: "Casa Lista",
     descripcion: "Lo indispensable para habitar",
     imagen: "/paquetes/casa-lista.jpg",
@@ -44,6 +23,7 @@ const PAQUETES = [
   },
   {
     nivel: 2,
+    slug: "confort",
     nombre: "Confort",
     descripcion: "Todo lo anterior, más el clima",
     imagen: "/paquetes/confort.jpg",
@@ -51,6 +31,7 @@ const PAQUETES = [
   },
   {
     nivel: 3,
+    slug: "plus",
     nombre: "Plus",
     descripcion: "Todo lo anterior, más los remates",
     imagen: "/paquetes/plus.jpg",
@@ -58,6 +39,7 @@ const PAQUETES = [
   },
   {
     nivel: 4,
+    slug: "total",
     nombre: "Total",
     descripcion: "Listo para mudarte el mismo día",
     imagen: "/paquetes/total.jpg",
@@ -67,6 +49,20 @@ const PAQUETES = [
       "Lavadora",
       "Estufa",
       "Vale de muebles para estrenar",
+    ],
+  },
+  {
+    nivel: 5,
+    slug: "arma-el-tuyo",
+    nombre: "Arma el tuyo",
+    descripcion: "Sin cocina. Tú escoges lo demás",
+    imagen: "/paquetes/arma-el-tuyo.jpg",
+    esArmable: true,
+    partidas: [
+      "Los climas que necesite tu depa",
+      "Clósets, carpintería, lavado",
+      "Muro, pantalla, electrodomésticos, vale",
+      "Marca solo lo que quieras, a precio de lista",
     ],
   },
 ];
@@ -100,9 +96,33 @@ async function main() {
     },
   });
 
+  const partidaPorClave = new Map<string, string>();
+  for (const partida of PARTIDAS) {
+    const { nombreLargo: _nombreLargo, ficha, acabados, ...datos } = partida;
+    const creada = await prisma.partida.create({
+      data: {
+        ...datos,
+        ficha: ficha as Prisma.InputJsonValue,
+        acabados: (acabados ?? Prisma.DbNull) as Prisma.InputJsonValue,
+      },
+    });
+    partidaPorClave.set(partida.clave, creada.id);
+  }
+
   const paquetes: { id: string }[] = [];
   for (const p of PAQUETES) {
-    paquetes.push(await prisma.paquete.create({ data: p }));
+    const claves =
+      p.slug === "arma-el-tuyo"
+        ? PARTIDAS.filter((x) => x.armable).map((x) => x.clave)
+        : PAQUETE_PARTIDAS[p.slug];
+    paquetes.push(
+      await prisma.paquete.create({
+        data: {
+          ...p,
+          catalogo: { connect: claves.map((c) => ({ id: partidaPorClave.get(c)! })) },
+        },
+      })
+    );
   }
 
   for (const [nombreProyecto, prototipos] of Object.entries(CATALOGO)) {
@@ -127,14 +147,25 @@ async function main() {
           clave: proto.clave,
           superficie: proto.m2,
           recamaras: proto.rec,
+          climasDefault: proto.climas,
         },
       });
       porClave.set(proto.clave, creado.id);
 
+      // Los cuatro paquetes cerrados llevan precio fijo. «Arma el tuyo» no:
+      // su precio sale de sumar las partidas que marque el comprador.
       await prisma.precio.createMany({
         data: proto.precios.map((monto, i) => ({
           prototipoId: creado.id,
           paqueteId: paquetes[i].id,
+          monto,
+        })),
+      });
+
+      await prisma.precioPartida.createMany({
+        data: Object.entries(proto.partidas).map(([clave, monto]) => ({
+          prototipoId: creado.id,
+          partidaId: partidaPorClave.get(clave)!,
           monto,
         })),
       });
@@ -154,7 +185,7 @@ async function main() {
 
   const unidades = await prisma.unidad.count();
   console.log(
-    `Seed listo · PISSA · ${Object.keys(CATALOGO).length} proyectos · ${PAQUETES.length} paquetes · ${unidades} unidades`
+    `Seed listo · PISSA · ${Object.keys(CATALOGO).length} proyectos · ${PAQUETES.length} paquetes · ${PARTIDAS.length} partidas · ${unidades} unidades`
   );
 }
 

@@ -40,9 +40,13 @@ model Prototipo {
   clave      String
   superficie Decimal   @db.Decimal(8, 2)
   recamaras  Int
-  precios    Precio[]
-  unidades   Unidad[]
-  createdAt  DateTime  @default(now())
+  /// Cuántos climas trae de fábrica: uno por espacio (sala + cada recámara).
+  /// Spec §4: vive en el catálogo del prototipo, nunca en el código.
+  climasDefault  Int   @default(1)
+  precios        Precio[]
+  preciosPartida PrecioPartida[]
+  unidades       Unidad[]
+  createdAt      DateTime  @default(now())
 
   @@unique([proyectoId, clave])
 }
@@ -50,13 +54,65 @@ model Prototipo {
 model Paquete {
   id          String   @id @default(cuid())
   nivel       Int      @unique
+  slug        String   @unique
   nombre      String
   descripcion String?
   imagen      String?
+  /// Los renglones de mercadotecnia que se listan en la tarjeta.
   partidas    String[]
+  /// El paquete 05: no trae lista fija, el comprador la arma.
+  esArmable   Boolean  @default(false)
+  /// Los productos que lo componen, para la ficha de cada uno.
+  catalogo    Partida[]
   precios     Precio[]
   planes      Plan[]
   createdAt   DateTime @default(now())
+}
+
+enum FamiliaPartida {
+  A_LA_MEDIDA
+  DE_CATALOGO
+  VALE
+}
+
+/// Catálogo de productos. Sustituye al paquete como unidad de venta:
+/// spec §4, el plan se arma sobre una lista de partidas con precio.
+model Partida {
+  id       String         @id @default(cuid())
+  clave    String         @unique
+  nombre   String
+  familia  FamiliaPartida
+  /// Se puede escoger en «Arma el tuyo». La cocina no.
+  armable  Boolean        @default(true)
+  /// Viene marcada de entrada en «Arma el tuyo».
+  porDefecto Boolean      @default(false)
+  /// Se cotiza por equipo, con contador (los climas).
+  porEquipo  Boolean      @default(false)
+  /// Su ficha lleva plano: sólo las que se fabrican a la medida.
+  llevaPlano Boolean      @default(false)
+  imagen     String?
+  /// Pares [etiqueta, valor]. Los que dicen «— Moretti» siguen pendientes.
+  ficha      Json
+  /// Hasta tres opciones de acabado: [nombre, color]. Null si no aplica.
+  acabados   Json?
+  orden      Int
+  paquetes   Paquete[]
+  precios    PrecioPartida[]
+  createdAt  DateTime      @default(now())
+}
+
+/// Precio de lista público de una partida en un prototipo.
+/// Ya viene redondeado hacia arriba a la centena (spec §4).
+model PrecioPartida {
+  id          String    @id @default(cuid())
+  prototipo   Prototipo @relation(fields: [prototipoId], references: [id])
+  prototipoId String
+  partida     Partida   @relation(fields: [partidaId], references: [id])
+  partidaId   String
+  monto       Decimal   @db.Decimal(12, 2)
+  createdAt   DateTime  @default(now())
+
+  @@unique([prototipoId, partidaId])
 }
 
 /// Versionado: nunca se sobreescribe. Un precio nuevo cierra la vigencia del anterior.
