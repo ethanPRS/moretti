@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { generarPlan, ReglaError } from "@/lib/motor/planes";
+import { z } from "zod";
+import { darDeAlta, ReglaError } from "@/lib/motor/planes";
 
-/** Folio correlativo del comprador. Nunca se reutiliza, aunque alguien se dé de baja. */
-async function siguienteFolio() {
-  const total = await prisma.comprador.count();
-  return `DU-${String(total + 1).padStart(3, "0")}`;
-}
+const Alta = z.object({
+  nombre: z.string().trim().min(1),
+  contacto: z.string().trim().min(1),
+  unidadId: z.string().min(1),
+  paqueteId: z.string().min(1),
+  /** Clave de partida → cantidad. Sin ella, el paquete cerrado va tal cual. */
+  canasta: z.record(z.string(), z.number().int().min(0)).optional(),
+});
 
 export async function POST(req: NextRequest) {
-  const { nombre, contacto, unidadId, paqueteId } = await req.json();
-  if (!nombre || !contacto || !unidadId || !paqueteId) {
-    return NextResponse.json({ error: "Faltan datos del comprador." }, { status: 400 });
+  const datos = Alta.safeParse(await req.json().catch(() => null));
+  if (!datos.success) {
+    return NextResponse.json(
+      { error: "Faltan datos del comprador o la canasta no es válida." },
+      { status: 400 }
+    );
   }
 
   try {
-    const comprador = await prisma.comprador.create({
-      data: { nombre, contacto, unidadId, folio: await siguienteFolio() },
-    });
-    const plan = await generarPlan({ compradorId: comprador.id, paqueteId });
+    const { comprador, plan } = await darDeAlta(datos.data);
     return NextResponse.json({ comprador, plan }, { status: 201 });
   } catch (err) {
     if (err instanceof ReglaError) {

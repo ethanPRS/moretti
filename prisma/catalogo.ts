@@ -198,5 +198,46 @@ export const PAQUETE_PARTIDAS: Record<string, string[]> = {
   "arma-el-tuyo": [],
 };
 
-/** Debajo de esto no se financia a 12 meses: se paga de contado (spec §4). */
-export const MINIMO_PLAN = 50000;
+/** Los cuatro cerrados, de menor a mayor. `precios` de cada prototipo va en este orden. */
+export const PAQUETES_CERRADOS = ["casa-lista", "confort", "plus", "total"] as const;
+
+type PrototipoCatalogo = (typeof CATALOGO)[string][number];
+
+/**
+ * Precio de lista de la cocina en un prototipo. La maqueta no lo trae: la
+ * cocina sólo se vende dentro de un paquete. Pero la regla de «quitar una
+ * partida» (spec §4) cobra lo que queda a precio de lista, y casi siempre lo
+ * que queda incluye la cocina. Se deriva de Casa Lista, que es cocina +
+ * clósets + carpintería: es lo que le queda al paquete después de restar las
+ * otras dos a su precio de lista. En los 13 prototipos sale positivo y
+ * múltiplo de $100.
+ *
+ * Provisional hasta que Moretti dé el suyo: docs/decisiones.md, D-04.
+ */
+export function precioCocinaDerivado(proto: PrototipoCatalogo): number {
+  return proto.precios[0] - proto.partidas.closets - proto.partidas.carp;
+}
+
+/** Precio de lista por partida en un prototipo, cocina incluida. */
+export function listaDePrecios(proto: PrototipoCatalogo): Record<string, number> {
+  return { ...proto.partidas, cocina: precioCocinaDerivado(proto) };
+}
+
+/**
+ * Lo que trae un paquete cerrado en un prototipo, con cantidades: los
+ * paquetes son acumulativos y los climas son los del prototipo.
+ */
+export function contenidoPaquete(
+  slug: (typeof PAQUETES_CERRADOS)[number],
+  climas: number
+): Record<string, number> {
+  const hasta = PAQUETES_CERRADOS.indexOf(slug);
+  const claves = PAQUETES_CERRADOS.slice(0, hasta + 1).flatMap((s) => PAQUETE_PARTIDAS[s]);
+  const contenido: Record<string, number> = {};
+  for (const clave of claves) {
+    const porEquipo = PARTIDAS.find((p) => p.clave === clave)?.porEquipo;
+    const cantidad = porEquipo ? climas : 1;
+    if (cantidad > 0) contenido[clave] = cantidad;
+  }
+  return contenido;
+}
