@@ -20,7 +20,7 @@ export default async function ProyectosPage() {
         titulo="Proyectos"
         descripcion="Cada desarrollo tiene sus propios prototipos, precios y porcentaje de comisión. Nada asume que haya un solo proyecto."
         accion={
-          <Link href="/proyectos/nuevo" className="btn">
+          <Link href="/admin/proyectos/nuevo" className="btn">
             Nuevo proyecto
           </Link>
         }
@@ -32,7 +32,7 @@ export default async function ProyectosPage() {
           return (
             <Link
               key={p.id}
-              href={`/proyectos/${p.id}`}
+              href={`/admin/proyectos/${p.id}`}
               className="card group flex flex-col overflow-hidden transition-colors hover:border-line-2"
             >
               {p.imagen && (

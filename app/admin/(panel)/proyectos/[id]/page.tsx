@@ -98,12 +98,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     </td>
                     <td className="r">
                       {plan ? (
-                        <Link href={`/planes/${plan.id}`} className="text-accent hover:underline">
+                        <Link href={`/admin/planes/${plan.id}`} className="text-accent hover:underline">
                           Estado de cuenta
                         </Link>
                       ) : u.comprador ? null : (
                         <Link
-                          href={`/unidades/${u.id}/alta`}
+                          href={`/admin/unidades/${u.id}/alta`}
                           className="text-accent hover:underline"
                         >
                           Dar de alta

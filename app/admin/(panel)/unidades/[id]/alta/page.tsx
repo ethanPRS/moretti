@@ -33,7 +33,7 @@ export default async function AltaPage({ params }: { params: Promise<{ id: strin
           titulo={`${unidad.torre} ${unidad.numero}`}
           descripcion={`Esta unidad ya está dada de alta a nombre de ${unidad.comprador.nombre}.`}
         />
-        <Link href={`/proyectos/${unidad.proyectoId}`} className="btn self-start">
+        <Link href={`/admin/proyectos/${unidad.proyectoId}`} className="btn self-start">
           Volver al proyecto
         </Link>
       </div>

@@ -229,6 +229,7 @@ h3 {
 
 input[type="text"],
 input[type="email"],
+input[type="password"],
 input[type="tel"],
 input[type="number"],
 input[type="date"],
@@ -241,6 +242,10 @@ select {
   border-radius: var(--r-input);
   background: var(--surface);
   color: var(--ink);
+}
+input:disabled {
+  background: var(--surface-2);
+  cursor: not-allowed;
 }
 input::placeholder {
   color: var(--muted);

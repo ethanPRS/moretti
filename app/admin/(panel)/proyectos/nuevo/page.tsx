@@ -31,7 +31,7 @@ export default function NuevoProyectoPage() {
       return;
     }
     const proyecto = await res.json();
-    router.push(`/proyectos/${proyecto.id}`);
+    router.push(`/admin/proyectos/${proyecto.id}`);
   }
 
   return (

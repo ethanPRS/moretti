@@ -55,7 +55,7 @@ export default function AltaForm({
       return;
     }
     const { plan } = await res.json();
-    router.push(`/planes/${plan.id}`);
+    router.push(`/admin/planes/${plan.id}`);
   }
 
   return (

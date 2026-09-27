@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const secciones = [
-  { href: "#cotiza", label: "Cotiza" },
-  { href: "#paquetes", label: "Paquetes" },
-  { href: "#como", label: "Cómo funciona" },
+  { href: "/#cotiza", label: "Cotiza" },
+  { href: "/#paquetes", label: "Paquetes" },
+  { href: "/#como", label: "Cómo funciona" },
 ];
 
 export default function SitioLayout({ children }: { children: React.ReactNode }) {
@@ -21,17 +21,17 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
           </Link>
           <div className="flex items-center gap-7 text-[15px]">
             {secciones.map((s) => (
-              <a
+              <Link
                 key={s.href}
                 href={s.href}
                 className="hidden text-ink-2 hover:text-accent sm:inline"
               >
                 {s.label}
-              </a>
+              </Link>
             ))}
-            <a href="#cotiza" className="btn btn-sm">
+            <Link href="/#cotiza" className="btn btn-sm">
               Cotizar mi depa
-            </a>
+            </Link>
           </div>
         </nav>
       </header>
@@ -48,7 +48,7 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
             Moretti fabrica, instala, garantiza y factura. día uno presenta el programa,
             estructura el plan y da seguimiento a la cobranza.
           </p>
-          <Link href="/panel" className="text-[13px] hover:text-accent">
+          <Link href="/admin/login" className="text-[13px] hover:text-accent">
             Acceso interno
           </Link>
         </div>

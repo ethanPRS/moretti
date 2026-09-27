@@ -67,7 +67,7 @@ export default async function PanelPage() {
               unidad libre y registra a su comprador para generar la primera cotización.
             </p>
           </div>
-          <Link href="/proyectos" className="btn">
+          <Link href="/admin/proyectos" className="btn">
             Ver proyectos
           </Link>
         </div>
@@ -94,7 +94,7 @@ export default async function PanelPage() {
                 return (
                   <tr key={plan.id}>
                     <td>
-                      <Link href={`/planes/${plan.id}`} className="hover:text-accent">
+                      <Link href={`/admin/planes/${plan.id}`} className="hover:text-accent">
                         {plan.comprador.nombre}
                       </Link>
                       <span className="ml-2 font-mono text-[11px] text-muted">
