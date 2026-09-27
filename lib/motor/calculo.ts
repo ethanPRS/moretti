@@ -33,4 +33,4 @@ export function calcularExhibiciones(
 
 // El gemelo en enteros vive aparte, sin Prisma, para que el cotizador del
 // sitio (componente de cliente) lo pueda importar.
-export { calcularExhibicionesEnteras, MINIMO_PLAN } from "./enteros";
+export { calcularExhibicionesEnteras } from "./enteros";

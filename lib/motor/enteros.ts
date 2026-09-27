@@ -5,12 +5,7 @@
 
 const PLAZO = 12;
 
-/**
- * Debajo de esto no se financia a 12 meses: se paga de contado (spec §4).
- * La spec lo pide por proyecto (`minimo_plan`); mientras no exista la
- * columna en Proyecto vive aquí. Pendiente del Sprint 1, actividad I.
- */
-export const MINIMO_PLAN = 50000;
+// El mínimo para financiar ya no vive aquí: es Proyecto.minimoPlan (S1-03).
 
 /**
  * Gemelo en enteros de `calcularExhibiciones`.

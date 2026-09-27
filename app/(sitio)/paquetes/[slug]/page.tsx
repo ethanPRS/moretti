@@ -93,6 +93,11 @@ export default async function PaqueteDetallePage({
         { src: "/interior-hero.jpg", alt: "Sala y cocina del departamento muestra" },
       ];
 
+  // El mínimo es por proyecto; esta página no es de un proyecto, así que
+  // muestra el más bajo con el que se puede financiar.
+  const minimo = await prisma.proyecto.aggregate({ _min: { minimoPlan: true } });
+  const minimoPlan = Number(minimo._min.minimoPlan ?? 0);
+
   const otros = await prisma.paquete.findMany({
     where: { NOT: { id: paquete.id } },
     orderBy: { nivel: "asc" },
@@ -137,7 +142,7 @@ export default async function PaqueteDetallePage({
                 <>
                   <p className="label">Tú decides el total</p>
                   <p className="mt-1.5 text-[15px] text-ink-2">
-                    Plan a 12 meses desde <b className="text-ink">$50,000</b>. Abajo de eso
+                    Plan a 12 meses desde <b className="text-ink">{mx(minimoPlan)}</b>. Abajo de eso
                     se paga de contado.
                   </p>
                 </>

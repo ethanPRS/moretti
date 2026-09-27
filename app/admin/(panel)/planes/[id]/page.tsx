@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
+import { EstadoExhibicion, EstadoPlan, ModalidadPlan } from "@prisma/client";
 import {
   PageHead,
   Money,
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui";
 import CobrarButton from "./CobrarButton";
 import ContratoForm from "./ContratoForm";
+
+const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,23 +26,29 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         },
       },
       paquete: true,
+      renglones: { include: { partida: true } },
       exhibiciones: { orderBy: { numero: "asc" }, include: { pago: true } },
     },
   });
   if (!plan) notFound();
 
-  const [eventos, nivelesIncluidos] = await Promise.all([
-    prisma.evento.findMany({
-      where: { entidadTipo: "plan", entidadId: plan.id },
-      orderBy: { fecha: "desc" },
-    }),
-    // Los paquetes son acumulativos: incluye todo lo de los niveles anteriores.
-    prisma.paquete.findMany({
-      where: { nivel: { lte: plan.paquete.nivel } },
-      orderBy: { nivel: "asc" },
-    }),
-  ]);
-  const incluye = nivelesIncluidos.flatMap((p) => p.partidas);
+  const eventos = await prisma.evento.findMany({
+    where: { entidadTipo: "plan", entidadId: plan.id },
+    orderBy: { fecha: "desc" },
+  });
+
+  // Lo vendido es la lista de renglones; el paquete es sólo la etiqueta (spec §4).
+  const renglones = [...plan.renglones].sort(
+    (a, b) => a.partida.orden - b.partida.orden || a.origen.localeCompare(b.origen)
+  );
+  const sumaRenglones = renglones.reduce((acc, r) => acc + Number(r.precioCongelado), 0);
+  const cuadra = sumaRenglones === Number(plan.montoCongelado);
+  const etiqueta =
+    plan.modalidad === ModalidadPlan.ARMA_EL_TUYO
+      ? plan.paquete.nombre
+      : plan.modalidad === ModalidadPlan.A_LISTA
+        ? `${plan.paquete.nombre}, sin precio de paquete`
+        : `Paquete ${plan.paquete.nombre}`;
 
   const unidad = plan.comprador.unidad;
   const contrato = unidad.contrato;
@@ -58,7 +66,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       <PageHead
         eyebrow="Estado de cuenta"
         titulo={plan.comprador.nombre}
-        descripcion={`${unidad.proyecto.nombre} · ${unidad.torre} ${unidad.numero} · ${unidad.prototipo.clave} · paquete ${plan.paquete.nombre}`}
+        descripcion={`${unidad.proyecto.nombre} · ${unidad.torre} ${unidad.numero} · ${unidad.prototipo.clave} · ${etiqueta}`}
         accion={<ChipEstadoPlan estado={plan.estado} />}
       />
 
@@ -75,10 +83,16 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </div>
           <div>
             <p className="eyebrow">Lo que contrató</p>
-            <h2 className="mt-1.5 text-[22px]">Paquete {plan.paquete.nombre}</h2>
-            <p className="mt-1 text-[14px] text-muted">{plan.paquete.descripcion}</p>
+            <h2 className="mt-1.5 text-[22px]">{etiqueta}</h2>
+            <p className="mt-1 text-[14px] text-muted">
+              {plan.modalidad === ModalidadPlan.PAQUETE
+                ? plan.paquete.descripcion
+                : "Cada partida a su precio de lista."}
+            </p>
             <p className="mt-3 max-w-[58ch] text-[13.5px] text-ink-2">
-              {incluye.join(" · ")}
+              {renglones
+                .map((r) => (r.cantidad > 1 ? `${r.partida.nombre} ×${r.cantidad}` : r.partida.nombre))
+                .join(" · ")}
             </p>
           </div>
         </div>
@@ -102,6 +116,61 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           nota={`${(Number(unidad.proyecto.porcentajeComision) * 100).toFixed(0)} % por cobro`}
         />
       </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="label">Lo que se vendió · partida por partida</p>
+          <p className="text-[12.5px] text-muted">
+            {congelado
+              ? `Lista congelada con el anticipo el ${plan.fechaCongelamiento!.toLocaleDateString("es-MX")}: ya no cambia (R2).`
+              : "Cotización: la lista y sus precios se congelan al cobrar el anticipo."}
+          </p>
+        </div>
+        <div className="card overflow-x-auto p-5">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Partida</th>
+                <th className="r">Cantidad</th>
+                <th className="r">Lista por pieza</th>
+                <th className="r">En este plan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {renglones.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="font-medium">{r.partida.nombre}</span>
+                    <span className="ml-2 inline-flex gap-1.5 align-middle">
+                      <span className="chip wait">{FAMILIA[r.partida.familia]}</span>
+                      {r.origen === "AGREGADA" && plan.modalidad !== ModalidadPlan.ARMA_EL_TUYO && (
+                        <span className="chip info">Agregada</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="r">{r.cantidad}</td>
+                  <td className="r text-muted">
+                    <Money valor={Number(r.precioLista)} />
+                  </td>
+                  <td className="r">
+                    <Money valor={Number(r.precioCongelado)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={3} className="font-medium">
+                  Total {cuadra ? "· cuadra al peso con el plan (R7)" : "· NO cuadra con el plan"}
+                </td>
+                <td className={`r font-semibold ${cuadra ? "" : "text-warm"}`}>
+                  <Money valor={sumaRenglones} />
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
 
       <div className="flex flex-col gap-3">
         <p className="label">Avance del plan</p>

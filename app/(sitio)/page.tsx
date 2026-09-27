@@ -1,12 +1,10 @@
 import Image from "next/image";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { calcularExhibiciones, DESCUENTO_CONTADO } from "@/lib/motor/calculo";
-import Cotizador, { type Desarrollo } from "./Cotizador";
+import { DESCUENTO_CONTADO } from "@/lib/motor/calculo";
+import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
+import Cotizador from "./Cotizador";
 import Reveal from "@/components/Reveal";
 import Link from "next/link";
-
-const { Decimal } = Prisma;
 
 const PASOS = [
   {
@@ -27,73 +25,14 @@ const PASOS = [
 ];
 
 export default async function SitioPage() {
-  const [proyectos, paquetes] = await Promise.all([
-    prisma.proyecto.findMany({
-      include: {
-        prototipos: {
-          include: {
-            precios: {
-              where: { vigenteHasta: null },
-              include: { paquete: true },
-              orderBy: { paquete: { nivel: "asc" } },
-            },
-            // Precio de lista por partida: la base de «Arma el tuyo».
-            preciosPartida: { include: { partida: true } },
-          },
-          orderBy: { clave: "asc" },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
+  // El cotizador lee el catálogo con la misma función que usa el motor al
+  // generar el plan, y cotiza con la misma `cotizar`: lo que ve el comprador
+  // es exactamente lo que se le va a cargar (S1-04).
+  const [catalogo, paquetes] = await Promise.all([
+    cargarCatalogosPorProyecto(),
     prisma.paquete.findMany({ orderBy: { nivel: "asc" } }),
   ]);
-
-  // Se cotiza con el mismo motor que después ejecuta los cobros, para que lo
-  // que ve el comprador sea exactamente lo que se le va a cargar.
-  const desarrollos: Desarrollo[] = proyectos.map((proyecto) => ({
-    id: proyecto.id,
-    nombre: proyecto.nombre,
-    // En puntos base, para que el cotizador calcule con enteros exactos.
-    anticipoBP: Math.round(Number(proyecto.porcentajeAnticipo) * 10000),
-    prototipos: proyecto.prototipos
-      .filter((proto) => proto.precios.length > 0)
-      .map((proto) => ({
-        id: proto.id,
-        clave: proto.clave,
-        superficie: Number(proto.superficie),
-        recamaras: proto.recamaras,
-        climasDefault: proto.climasDefault,
-        partidas: proto.preciosPartida
-          .filter((pp) => pp.partida.armable)
-          .sort((a, b) => a.partida.orden - b.partida.orden)
-          .map((pp) => ({
-            clave: pp.partida.clave,
-            nombre: pp.partida.nombre,
-            familia: pp.partida.familia,
-            porEquipo: pp.partida.porEquipo,
-            porDefecto: pp.partida.porDefecto,
-            precio: Number(pp.monto),
-          })),
-        cotizaciones: proto.precios.map((precio) => {
-          const exhibiciones = calcularExhibiciones(
-            new Decimal(precio.monto),
-            new Decimal(proyecto.porcentajeAnticipo)
-          );
-          const total = Number(precio.monto);
-          const contado = Math.round(total * (1 - DESCUENTO_CONTADO));
-          return {
-            paqueteId: precio.paqueteId,
-            paqueteNombre: precio.paquete.nombre,
-            nivel: precio.paquete.nivel,
-            total,
-            anticipo: exhibiciones[0].monto.toNumber(),
-            mensualidad: exhibiciones[1].monto.toNumber(),
-            contado,
-            ahorro: total - contado,
-          };
-        }),
-      })),
-  }));
+  const desarrollos = catalogo.proyectos.filter((p) => p.prototipos.length > 0);
 
   const armable = paquetes.find((p) => p.esArmable);
   const cerrados = paquetes.filter((p) => !p.esArmable);
@@ -154,7 +93,7 @@ export default async function SitioPage() {
           <Reveal className="mt-8" delay={120}>
             <Cotizador
               desarrollos={desarrollos}
-              armable={armable ? { id: armable.id, nombre: armable.nombre, nivel: armable.nivel } : null}
+              armable={catalogo.armable}
               descuentoContado={DESCUENTO_CONTADO}
             />
           </Reveal>

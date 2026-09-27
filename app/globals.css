@@ -286,6 +286,10 @@ select {
 .tbl th.r {
   text-align: right;
 }
+.tbl tfoot td {
+  border-top: 1px solid var(--line-2);
+  border-bottom: 0;
+}
 
 .chip {
   display: inline-block;
