@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+/**
+ * 200 cobrado · 202 pendiente (el banco pidió autenticación) · 402 rechazado.
+ * En los tres casos se refresca: la bitácora ya trae lo que pasó.
+ */
 export default function CobrarButton({
   exhibicionId,
   esAnticipo,
@@ -14,17 +18,18 @@ export default function CobrarButton({
 }) {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ texto: string; tipo: "error" | "info" } | null>(null);
 
   async function cobrar() {
-    setError(null);
+    setAviso(null);
     setCargando(true);
     const res = await fetch(`/api/exhibiciones/${exhibicionId}/cobrar`, { method: "POST" });
     setCargando(false);
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "No se pudo cobrar.");
-      return;
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 202) {
+      setAviso({ texto: data.mensaje ?? "El cobro quedó pendiente.", tipo: "info" });
+    } else if (!res.ok) {
+      setAviso({ texto: data.error ?? "No se pudo cobrar.", tipo: "error" });
     }
     router.refresh();
   }
@@ -34,7 +39,14 @@ export default function CobrarButton({
       <button onClick={cobrar} disabled={cargando || bloqueado} className="btn btn-sm">
         {cargando ? "Cobrando…" : esAnticipo ? "Cobrar anticipo" : "Cobrar"}
       </button>
-      {error && <span className="max-w-[34ch] text-right text-[12px] text-warm">{error}</span>}
+      {aviso && (
+        <span
+          role={aviso.tipo === "error" ? "alert" : "status"}
+          className={`max-w-[34ch] text-right text-[12px] ${aviso.tipo === "error" ? "text-warm" : "text-ink-2"}`}
+        >
+          {aviso.texto}
+        </span>
+      )}
     </div>
   );
 }
