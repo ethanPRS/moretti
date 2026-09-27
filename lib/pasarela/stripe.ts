@@ -1,30 +1,44 @@
-import type { Pasarela, SolicitudCobro, ResultadoCobro } from "./contrato";
+import type {
+  Pasarela,
+  PreparacionTarjeta,
+  ResultadoCobro,
+  SolicitudCobro,
+  SolicitudTarjeta,
+} from "./contrato";
 
 /**
  * CHARLY — este es tu archivo.
  *
- * Implementa `cobrar` llamando a Stripe de verdad, respetando el
- * contrato de ./contrato.ts. No cambies la firma de la función ni el
- * tipo de retorno sin avisar a Ethan: el motor depende de ella tal cual
- * está.
+ * Implementa la interfaz de ./contrato.ts llamando a Stripe de verdad. No
+ * cambies las firmas ni los tipos de retorno sin avisar a Ethan: el motor
+ * depende de ellos tal cual están. La versión 2 del contrato (S1-01) y lo que
+ * cambió respecto a la 1 está en docs/contrato-pasarela.md.
  *
  * Pendientes que ya conoces del archivo 14 y de la hoja 15:
- * - Llave de idempotencia: `plan_${planId}:exh_${numeroExhibicion}:int_${intento}`
+ * - Llave de idempotencia: usa `llaveIdempotencia(solicitud)` de ./contrato
  *   (nunca la hora, nunca un aleatorio). El intento va porque Stripe
  *   recuerda también los rechazos: sin él, un reintento no reintenta.
- * - Cargo directo sobre la cuenta de Moretti (Stripe-Account) con
- *   application_fee_amount = montoComision, en centavos.
+ * - Cargo directo sobre la cuenta de Moretti del proyecto (`proyectoId` →
+ *   Stripe-Account) con application_fee_amount = comisionCentavos. Los
+ *   montos ya llegan en centavos enteros: no multipliques por 100.
  * - compradorPresente=true → PaymentIntent normal (anticipo).
  *   compradorPresente=false → off_session: true (mensualidad).
- * - Si Stripe rechaza el cobro, regresa `exitoso:false` con el
+ * - status requires_action o processing → `estado: "pendiente"`, con el id
+ *   del PaymentIntent como referencia. El motor no marca nada como pagado
+ *   ni cuenta un intento nuevo; el pago lo aplica el webhook.
+ * - Si Stripe rechaza el cobro, regresa `estado: "rechazado"` con el
  *   `codigoRechazo` que mande Stripe (insufficient_funds, etc.) y
  *   `reintentar` según la tabla de la especificación — el motor decide
  *   cuándo reintentar, tú solo le pasas el código.
- * - Dónde vive la tarjeta guardada (plataforma o cuenta de Moretti):
- *   pendiente de la decisión con Ana Cris (actividad H del Sprint 0).
+ * - Dónde vive la tarjeta guardada: mientras Ana Cris decide, la variante
+ *   provisional es la del plan B (docs/decisiones.md, D-02): en la
+ *   plataforma, y se clona a la cuenta de Moretti al cobrar.
  */
 export const pasarelaStripe: Pasarela = {
   async cobrar(_solicitud: SolicitudCobro): Promise<ResultadoCobro> {
-    throw new Error("pasarelaStripe.cobrar: todavía no implementada — Sprint 1, actividades K/L/M.");
+    throw new Error("pasarelaStripe.cobrar: todavía no implementada — Sprint 1, S1-07 y S1-09.");
+  },
+  async prepararTarjeta(_solicitud: SolicitudTarjeta): Promise<PreparacionTarjeta> {
+    throw new Error("pasarelaStripe.prepararTarjeta: todavía no implementada — Sprint 1, S1-06.");
   },
 };
