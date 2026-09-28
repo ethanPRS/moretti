@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# día uno · prototipo
 
-## Getting Started
+Sistema de venta, cobranza y operación del programa día uno con Moretti:
+cotizador del sitio, back office (`/admin`) y el motor de planes y cobros.
+Next.js 16 + PostgreSQL + Prisma. Trabajo de clase, siempre contra el modo de
+pruebas de Stripe y con datos inventados.
 
-First, run the development server:
+## Arrancar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env            # si no tienes .env: DATABASE_URL de tu Postgres local
+npx prisma migrate reset        # crea la base, aplica migraciones y siembra el catálogo y DU-001
+npm run dev                     # http://localhost:3000 · back office en /admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Después de cada migración, **reinicia `npm run dev`**: el servidor que ya
+corría se queda con el cliente de Prisma viejo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Comprobar
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test          # unitarias + integración (ver docs/pruebas.md)
+npx tsc --noEmit  # tipos
+npm run lint
+npm run build
+```
 
-## Learn More
+## Dónde está qué
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Carpeta | Qué |
+|---|---|
+| `lib/motor/` | Las reglas: cotizar canastas, generar planes, cobrar, estados. Aquí vive el negocio. |
+| `lib/pasarela/` | El contrato con la pasarela de pagos y la pasarela falsa. La de Stripe es de Charly. |
+| `lib/almacenamiento/` | Dónde se guardan las fotos de referencia (hoy, disco local en `almacen/`). |
+| `prisma/` | Esquema, migraciones, catálogo de la maqueta y seed. |
+| `app/(sitio)/` | Lo que ve el comprador. |
+| `app/admin/` | El back office. |
+| `docs/` | Decisiones, reglas, modelo de datos, parámetros, pruebas y los documentos de cada sprint. Empieza por [`docs/README.md`](docs/README.md). |
