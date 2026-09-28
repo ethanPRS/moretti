@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DESCUENTO_CONTADO } from "@/lib/motor/calculo";
 import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
@@ -25,6 +26,9 @@ const PASOS = [
 ];
 
 export default async function SitioPage() {
+  // Se arma en cada visita, no al compilar: los precios y el mínimo del
+  // proyecto viven en la base y cambian sin volver a desplegar.
+  await connection();
   // El cotizador lee el catálogo con la misma función que usa el motor al
   // generar el plan, y cotiza con la misma `cotizar`: lo que ve el comprador
   // es exactamente lo que se le va a cargar (S1-04).

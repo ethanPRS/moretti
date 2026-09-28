@@ -1,9 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
+import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead } from "@/components/ui";
 
 export default async function ProyectosPage() {
+  // En cada visita, no al compilar: lee la base.
+  await connection();
   const proyectos = await prisma.proyecto.findMany({
     include: {
       desarrollador: true,

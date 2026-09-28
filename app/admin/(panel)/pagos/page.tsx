@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
+import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
 import {
@@ -30,6 +31,8 @@ const hora = (d: Date) =>
   d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
 export default async function PagosPage() {
+  // En cada visita, no al compilar: lee la base.
+  await connection();
   const [pagos, proximas] = await Promise.all([
     prisma.pago.findMany({
       include: {

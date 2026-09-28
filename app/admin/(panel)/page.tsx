@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
 import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
 
 export default async function PanelPage() {
+  // En cada visita, no al compilar: lee la base.
+  await connection();
   const [planes, unidadesLibres, pagos] = await Promise.all([
     prisma.plan.findMany({
       where: { estado: { not: EstadoPlan.CANCELADO } },
