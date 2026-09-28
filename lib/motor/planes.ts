@@ -19,6 +19,14 @@ import {
 } from "./canasta";
 import { cargarCatalogo, type CatalogoCotizable } from "./catalogo";
 import { ReglaError, mx, mxc } from "./errores";
+import {
+  ETIQUETA_FINANCIERO,
+  caminoFinanciero,
+  esManual,
+  mensajeNoManual,
+  mensajeTransicionInvalida,
+  puedeTransitar,
+} from "./estados";
 import { explicarRechazo } from "./rechazos";
 
 const { Decimal } = Prisma;
@@ -507,13 +515,17 @@ async function aplicarPago(p: {
         where: { id: exhibicion.id },
         data: { estado: EstadoExhibicion.PAGADA },
       });
+      // Un pago que llega con el plan ya cancelado (el comprador se autenticó
+      // tarde) se registra, pero no reabre el plan: eso lo decide una persona.
+      const cancelado = plan.estado === EstadoPlan.CANCELADO;
       await tx.plan.update({
         where: { id: plan.id },
         data: {
           saldo: saldo.lt(0) ? 0 : saldo,
-          ...(esAnticipo
-            ? { estado: EstadoPlan.ACTIVO, fechaCongelamiento: ahora }
-            : { estado: liquidado ? EstadoPlan.LIQUIDADO : EstadoPlan.ACTIVO }),
+          ...(esAnticipo ? { fechaCongelamiento: ahora } : {}),
+          ...(cancelado
+            ? {}
+            : { estado: esAnticipo || !liquidado ? EstadoPlan.ACTIVO : EstadoPlan.LIQUIDADO }),
         },
       });
 
@@ -523,7 +535,12 @@ async function aplicarPago(p: {
         : liquidado
           ? EstadoFinanciero.LIQUIDADO
           : EstadoFinanciero.AL_CORRIENTE;
-      await tx.unidad.update({ where: { id: unidad.id }, data: { estadoFinanciero: estadoNuevo } });
+      await seguirCaminoFinanciero(tx, {
+        unidadId: unidad.id,
+        desde: unidad.estadoFinanciero,
+        hacia: estadoNuevo,
+        motivo: esAnticipo ? "se cobró el anticipo" : `se cobró la exhibición ${exhibicion.numero}`,
+      });
 
       const pct = `${p.porcentaje.mul(100).toDecimalPlaces(2).toString()} %`;
       await tx.evento.create({
@@ -600,6 +617,127 @@ function capitalizar(texto: string) {
 
 function esViolacionUnica(err: unknown) {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Estado financiero de la unidad (S1-13)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cambia a mano el estado financiero de una unidad: suspender, reactivar,
+ * cancelar. Sólo transiciones permitidas; si no procede, el error dice cuál
+ * sí. Las que provoca un cobro (APARTADO, LIQUIDADO…) no se hacen a mano.
+ * Cancelar exige motivo y cancela también el plan abierto, para que ya no se
+ * le cobre.
+ */
+export async function cambiarEstadoFinanciero(params: {
+  unidadId: string;
+  hacia: EstadoFinanciero;
+  motivo?: string;
+  usuario?: string;
+}) {
+  const motivo = params.motivo?.trim() ?? "";
+  if (params.hacia === EstadoFinanciero.CANCELADO && !motivo) {
+    throw new ReglaError("Para cancelar hay que escribir el motivo: queda en la bitácora y en el expediente.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const unidad = await tx.unidad.findUnique({
+      where: { id: params.unidadId },
+      include: { comprador: { include: { planes: true } } },
+    });
+    if (!unidad) throw new ReglaError("No se encontró la unidad.");
+    const desde = unidad.estadoFinanciero;
+    if (!puedeTransitar(desde, params.hacia)) {
+      throw new ReglaError(mensajeTransicionInvalida(desde, params.hacia));
+    }
+    if (!esManual(desde, params.hacia)) {
+      throw new ReglaError(mensajeNoManual(params.hacia));
+    }
+
+    // Condicionado al estado leído: si alguien lo cambió mientras tanto, no se pisa.
+    const { count } = await tx.unidad.updateMany({
+      where: { id: unidad.id, estadoFinanciero: desde },
+      data: { estadoFinanciero: params.hacia },
+    });
+    if (count === 0) {
+      throw new ReglaError("El estado de la unidad cambió mientras tanto. Recarga la página y vuelve a intentar.");
+    }
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: unidad.id,
+        tipo: "estado_financiero_cambiado",
+        estadoAnterior: desde,
+        estadoNuevo: params.hacia,
+        usuario: params.usuario ?? "back office",
+        comentario: `Estado financiero: ${ETIQUETA_FINANCIERO[desde]} → ${ETIQUETA_FINANCIERO[params.hacia]}${motivo ? `. Motivo: ${motivo}` : ""}.`,
+      },
+    });
+
+    if (params.hacia === EstadoFinanciero.CANCELADO) {
+      const abiertos = (unidad.comprador?.planes ?? []).filter(
+        (p) => p.estado === EstadoPlan.COTIZADO || p.estado === EstadoPlan.ACTIVO
+      );
+      for (const plan of abiertos) {
+        await tx.plan.update({ where: { id: plan.id }, data: { estado: EstadoPlan.CANCELADO } });
+        await tx.evento.create({
+          data: {
+            entidadTipo: "plan",
+            entidadId: plan.id,
+            tipo: "plan_cancelado",
+            estadoAnterior: plan.estado,
+            estadoNuevo: EstadoPlan.CANCELADO,
+            usuario: params.usuario ?? "back office",
+            comentario: `Plan cancelado: ya no se le cobra nada. Motivo: ${motivo}. Lo ya cobrado no se toca (R3); reembolsos, aparte.`,
+          },
+        });
+      }
+    }
+    return { desde, hacia: params.hacia };
+  });
+}
+
+/**
+ * Las transiciones que provoca un pago. Un pago ya cobrado nunca se rechaza
+ * por el estado: se sigue el camino permitido (SUSPENDIDO → AL_CORRIENTE →
+ * LIQUIDADO si una unidad suspendida paga la última) con un evento por paso;
+ * y si no hay camino (un pago que llega con la unidad cancelada), el estado
+ * no se mueve y queda una alerta.
+ */
+async function seguirCaminoFinanciero(
+  tx: Tx,
+  p: { unidadId: string; desde: EstadoFinanciero; hacia: EstadoFinanciero; motivo: string }
+) {
+  const camino = caminoFinanciero(p.desde, p.hacia);
+  if (camino === null) {
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: p.unidadId,
+        tipo: "estado_financiero_inesperado",
+        estadoAnterior: p.desde,
+        estadoNuevo: p.hacia,
+        comentario: `ALERTA: ${p.motivo} con la unidad en ${ETIQUETA_FINANCIERO[p.desde]}, y de ahí no se puede pasar a ${ETIQUETA_FINANCIERO[p.hacia]}. El pago quedó registrado; el estado no se movió. Revisar: puede tocar un reembolso.`,
+      },
+    });
+    return;
+  }
+  let actual = p.desde;
+  for (const siguiente of camino) {
+    await tx.unidad.update({ where: { id: p.unidadId }, data: { estadoFinanciero: siguiente } });
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: p.unidadId,
+        tipo: "estado_financiero_cambiado",
+        estadoAnterior: actual,
+        estadoNuevo: siguiente,
+        comentario: `Estado financiero: ${ETIQUETA_FINANCIERO[actual]} → ${ETIQUETA_FINANCIERO[siguiente]} porque ${p.motivo}.`,
+      },
+    });
+    actual = siguiente;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────

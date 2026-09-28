@@ -6,12 +6,14 @@ import {
   PageHead,
   Money,
   Stat,
+  ChipEstadoFinanciero,
   ChipEstadoPlan,
   CintaExhibiciones,
 } from "@/components/ui";
 import CobrarButton from "./CobrarButton";
 import ContratoForm from "./ContratoForm";
 import AcabadoYFotos from "./AcabadoYFotos";
+import EstadoFinancieroForm from "./EstadoFinancieroForm";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -33,8 +35,14 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   });
   if (!plan) notFound();
 
+  // La bitácora del plan y la de su unidad (contrato, estado financiero).
   const eventos = await prisma.evento.findMany({
-    where: { entidadTipo: "plan", entidadId: plan.id },
+    where: {
+      OR: [
+        { entidadTipo: "plan", entidadId: plan.id },
+        { entidadTipo: "unidad", entidadId: plan.comprador.unidadId },
+      ],
+    },
     orderBy: { fecha: "desc" },
   });
 
@@ -75,7 +83,12 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         eyebrow="Estado de cuenta"
         titulo={plan.comprador.nombre}
         descripcion={`${unidad.proyecto.nombre} · ${unidad.torre} ${unidad.numero} · ${unidad.prototipo.clave} · ${etiqueta}`}
-        accion={<ChipEstadoPlan estado={plan.estado} />}
+        accion={
+          <div className="flex items-center gap-2">
+            <ChipEstadoFinanciero estado={unidad.estadoFinanciero} />
+            <ChipEstadoPlan estado={plan.estado} />
+          </div>
+        }
       />
 
       {plan.paquete.imagen && (
@@ -283,6 +296,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </tbody>
         </table>
       </div>
+
+      <EstadoFinancieroForm unidadId={unidad.id} estado={unidad.estadoFinanciero} />
 
       <div className="flex flex-col gap-3">
         <p className="label">Bitácora</p>
