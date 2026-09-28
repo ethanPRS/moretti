@@ -24,14 +24,9 @@ export async function POST(req: NextRequest) {
     const { comprador, plan } = await darDeAlta(datos.data);
     return NextResponse.json({ comprador, plan }, { status: 201 });
   } catch (err) {
+    // Los choques de concurrencia (misma unidad, mismo folio) ya los traduce el motor.
     if (err instanceof ReglaError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    if (err instanceof Error && (err as { code?: string }).code === "P2002") {
-      return NextResponse.json(
-        { error: "Esta unidad ya tiene un comprador registrado." },
-        { status: 400 }
-      );
     }
     throw err;
   }

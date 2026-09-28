@@ -190,20 +190,34 @@ export async function darDeAlta(params: {
 
   const preparado = await prepararPlan(unidad.prototipoId, params);
 
-  return prisma.$transaction(async (tx) => {
-    // Folio correlativo. Los compradores no se borran, así que no se repite.
-    const total = await tx.comprador.count();
-    const comprador = await tx.comprador.create({
-      data: {
-        nombre: params.nombre,
-        contacto: params.contacto,
-        unidadId: unidad.id,
-        folio: `DU-${String(total + 1).padStart(3, "0")}`,
-      },
-    });
-    const plan = await crearPlan(tx, comprador.id, preparado);
-    return { comprador, plan };
-  });
+  // Folio correlativo: los compradores no se borran, así que no se repite.
+  // Dos altas simultáneas pueden calcular el mismo; la segunda choca con el
+  // índice único y vuelve a intentar con el siguiente (en cada vuelta gana una).
+  for (let vuelta = 1; ; vuelta++) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const total = await tx.comprador.count();
+        const comprador = await tx.comprador.create({
+          data: {
+            nombre: params.nombre,
+            contacto: params.contacto,
+            unidadId: unidad.id,
+            folio: `DU-${String(total + 1).padStart(3, "0")}`,
+          },
+        });
+        const plan = await crearPlan(tx, comprador.id, preparado);
+        return { comprador, plan };
+      });
+    } catch (err) {
+      if (esViolacionUnica(err, "unidadId")) {
+        throw new ReglaError(
+          "Esta unidad ya está dada de alta: alguien la registró al mismo tiempo. Recarga la página para verla."
+        );
+      }
+      if (esViolacionUnica(err, "folio") && vuelta < 10) continue;
+      throw err;
+    }
+  }
 }
 
 function describirCotizacion(c: Cotizacion, paquete: string): string {
@@ -615,8 +629,12 @@ function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-function esViolacionUnica(err: unknown) {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+/** Choque con un índice único; con `campo`, sólo si es ese. */
+function esViolacionUnica(err: unknown, campo?: string) {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") return false;
+  if (!campo) return true;
+  const target = err.meta?.target;
+  return Array.isArray(target) ? target.includes(campo) : String(target ?? "").includes(campo);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

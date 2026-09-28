@@ -226,6 +226,34 @@ describe("S1-03 · reglas de armado en el motor", () => {
     expect(Number(plan.montoCongelado)).toBe(14700 + 9700);
   });
 
+  it("altas simultáneas en unidades distintas: todas pasan, cada una con su folio", async () => {
+    const unidades = await Promise.all([1, 2, 3, 4, 5].map(() => unidadLibre(DEPA_2R)));
+    const confort = await paquete("confort");
+    const altas = await Promise.allSettled(
+      unidades.map((u, i) =>
+        darDeAlta({ nombre: `Comprador ${i}`, contacto: "81", unidadId: u.id, paqueteId: confort.id })
+      )
+    );
+    expect(altas.filter((a) => a.status === "rejected")).toEqual([]);
+    const folios = (await prisma.comprador.findMany()).map((c) => c.folio).sort();
+    expect(folios).toEqual(["DU-001", "DU-002", "DU-003", "DU-004", "DU-005"]);
+  });
+
+  it("dos altas simultáneas de la misma unidad: una pasa y la otra dice por qué no", async () => {
+    const unidad = await unidadLibre(DEPA_2R);
+    const confort = await paquete("confort");
+    const altas = await Promise.allSettled(
+      ["Ana", "Beto"].map((nombre) =>
+        darDeAlta({ nombre, contacto: "81", unidadId: unidad.id, paqueteId: confort.id })
+      )
+    );
+    expect(altas.filter((a) => a.status === "fulfilled")).toHaveLength(1);
+    const rechazo = altas.find((a) => a.status === "rejected") as PromiseRejectedResult;
+    expect(rechazo.reason).toBeInstanceOf(ReglaError);
+    expect(rechazo.reason.message).toMatch(/ya está dada de alta/);
+    expect(await prisma.plan.count()).toBe(1);
+  });
+
   it("generarPlan también aplica las reglas para un comprador ya registrado", async () => {
     const unidad = await unidadLibre(DEPA_2R);
     const comprador = await prisma.comprador.create({
