@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PageHead } from "@/components/ui";
+import { PageHead, Money } from "@/components/ui";
 import EditarPaquete from "./EditarPaquete";
 
 export default async function PaquetesPage() {
@@ -13,80 +13,87 @@ export default async function PaquetesPage() {
   });
 
   return (
-    <div className="flex flex-col gap-9">
+    <div className="flex flex-col gap-10">
       <PageHead
-        eyebrow="Los paquetes"
-        titulo="Paquetes"
-        descripcion="Aquí se edita lo que se ve de cada paquete en el sitio: nombre, descripción, lo que incluye e imagen. Los precios se capturan por prototipo en la ficha de cada proyecto."
+        eyebrow="Paquetes"
+        titulo="Lo que se vende, nivel por nivel."
+        descripcion="Aquí se edita cómo se ve cada paquete en el sitio: nombre, descripción, lo que incluye e imagen. Los precios se capturan por prototipo en la ficha de cada proyecto."
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="flex flex-col gap-4">
         {paquetes.map((p, i) => {
           const montos = p.precios.map((pr) => Number(pr.monto));
           const desde = montos.length ? Math.min(...montos) : null;
-          const anteriores = paquetes.slice(0, i).flatMap((prev) => prev.partidas);
+          const hasta = montos.length ? Math.max(...montos) : null;
+          const anterior = i > 0 && !p.esArmable ? paquetes[i - 1] : null;
 
           return (
-            <article key={p.id} className="card flex flex-col overflow-hidden">
-              {p.imagen && (
-                <div className="relative aspect-[4/3] bg-surface-2">
-                  <Image
-                    src={p.imagen}
-                    alt={`Interior con el paquete ${p.nombre}`}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover"
-                  />
-                </div>
-              )}
-
-              <div className="flex flex-1 flex-col gap-3 p-5">
-                <div>
-                  <p className="eyebrow">Paquete 0{p.nivel}</p>
-                  <h2 className="mt-1.5 text-[23px]">{p.nombre}</h2>
-                  <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
-                </div>
-
-                <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
-                  {anteriores.map((partida) => (
-                    <li key={partida} className="relative pl-4 text-muted">
-                      <span className="absolute left-0 text-line-2">·</span>
-                      {partida}
-                    </li>
-                  ))}
-                  {p.partidas.map((partida) => (
-                    <li key={partida} className="relative pl-4 font-semibold text-ink">
-                      <span className="absolute left-0 font-bold text-accent">+</span>
-                      {partida}
-                    </li>
-                  ))}
-                </ul>
-
-                {desde !== null && (
-                  <p className="pt-3 text-[13px] text-muted">
-                    Desde{" "}
-                    <span className="figure text-[17px] text-ink">
-                      ${desde.toLocaleString("es-MX")}
-                    </span>
-                  </p>
+            <li key={p.id} className="pq">
+              <div className="pq-foto">
+                {p.imagen ? (
+                  <Image src={p.imagen} alt={`Interior con el paquete ${p.nombre}`} fill sizes="(max-width: 768px) 100vw, 240px" className="object-cover" />
+                ) : (
+                  <span className="grid h-full place-items-center text-[13px] text-muted">Sin imagen</span>
                 )}
-                <div className="mt-auto pt-2">
-                  <EditarPaquete
-                    paquete={{
-                      id: p.id,
-                      nombre: p.nombre,
-                      descripcion: p.descripcion,
-                      partidas: p.partidas,
-                      imagen: p.imagen,
-                      esArmable: p.esArmable,
-                    }}
-                  />
-                </div>
               </div>
-            </article>
+
+              <div className="flex min-w-0 flex-col gap-3">
+                <div>
+                  <p className="pq-nivel" data-armable={p.esArmable ? "" : undefined}>
+                    Paquete 0{p.nivel}{p.esArmable ? " · a tu medida" : ""}
+                  </p>
+                  <h2 className="mt-1 text-[26px] leading-tight">{p.nombre}</h2>
+                  {p.descripcion && <p className="mt-1 text-[14.5px] text-ink-2">{p.descripcion}</p>}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {anterior && <span className="pq-chip pq-chip-suave">Todo {anterior.nombre}</span>}
+                  {p.partidas.map((partida) => (
+                    <span key={partida} className="pq-chip">
+                      {p.esArmable ? "" : "+ "}
+                      {partida}
+                    </span>
+                  ))}
+                </div>
+                <EditarPaquete
+                  paquete={{
+                    id: p.id,
+                    nombre: p.nombre,
+                    descripcion: p.descripcion,
+                    partidas: p.partidas,
+                    imagen: p.imagen,
+                    esArmable: p.esArmable,
+                  }}
+                />
+              </div>
+
+              <div className="pq-precio">
+                {p.esArmable ? (
+                  <>
+                    <p className="pq-k">Precio</p>
+                    <p className="text-[15px] text-ink-2">A lista, pieza por pieza</p>
+                  </>
+                ) : desde !== null ? (
+                  <>
+                    <p className="pq-k">Desde</p>
+                    <p className="pq-v"><Money valor={desde} /></p>
+                    {hasta !== desde && (
+                      <p className="text-[13px] text-muted">hasta <Money valor={hasta!} /></p>
+                    )}
+                    <p className="mt-2 text-[12.5px] text-muted">
+                      En {montos.length} {montos.length === 1 ? "prototipo" : "prototipos"}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="pq-k">Sin precio</p>
+                    <p className="text-[13px] text-muted">Captúralo en la ficha de un proyecto.</p>
+                  </>
+                )}
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </div>
   );
 }
