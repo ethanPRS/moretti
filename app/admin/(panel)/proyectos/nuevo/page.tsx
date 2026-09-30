@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SubirImagen from "@/components/SubirImagen";
+import { PageHead } from "@/components/ui";
+import { avisar } from "@/components/admin/avisar";
 
 export default function NuevoProyectoPage() {
   const router = useRouter();
@@ -31,27 +33,27 @@ export default function NuevoProyectoPage() {
     setCargando(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo crear el proyecto.");
+      const msg = data.error ?? "No se pudo crear el proyecto.";
+      avisar.error(msg);
+      setError(msg);
       return;
     }
     const proyecto = await res.json();
+    avisar.exito(`Proyecto «${proyecto.nombre}» creado. Ahora agrega sus prototipos.`);
     router.push(`/admin/proyectos/${proyecto.id}`);
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="eyebrow">Pipeline</p>
-        <h1 className="mt-2 text-[clamp(28px,4vw,40px)]">Nuevo proyecto</h1>
-        <p className="mt-3 max-w-[60ch] text-ink-2">
-          Un proyecto es un desarrollo inmobiliario donde se venden paquetes. Después de
-          crearlo, en su ficha se agregan los prototipos, sus precios y las unidades.
-        </p>
-      </div>
+      <PageHead
+        eyebrow="Proyectos · nuevo"
+        titulo="Un desarrollo nuevo."
+        descripcion="Dos pasos: qué desarrollo es y en qué condiciones se financia. Después, en su ficha, agregas prototipos, unidades y precios."
+      />
 
       <form onSubmit={onSubmit} className="card flex max-w-2xl flex-col gap-7 p-7 sm:p-9">
         <fieldset className="flex flex-col gap-5">
-          <legend className="mb-4 text-[18px] font-semibold">¿Qué desarrollo es?</legend>
+          <legend className="mb-4 flex items-center gap-3 text-[20px] font-semibold"><span className="paso-n bg-ink text-ground">1</span>¿Qué desarrollo es?</legend>
           <div className="field">
             <label htmlFor="desarrolladorNombre">Desarrollador</label>
             <input id="desarrolladorNombre" name="desarrolladorNombre" placeholder="Ej. PISSA" required />
@@ -82,7 +84,7 @@ export default function NuevoProyectoPage() {
         </fieldset>
 
         <fieldset className="flex flex-col gap-5 border-t border-line pt-7">
-          <legend className="mb-1 text-[18px] font-semibold">Condiciones del plan</legend>
+          <legend className="mb-1 flex items-center gap-3 text-[20px] font-semibold"><span className="paso-n bg-ink text-ground">2</span>Condiciones del plan</legend>
           <p className="-mt-1 text-[14px] text-ink-2">
             Cada desarrollador puede negociar las suyas. Aplican a todos los planes de este
             proyecto.

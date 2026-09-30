@@ -20,9 +20,12 @@ export function BtnSalir() {
       type="button"
       id="btn-salir"
       onClick={salir}
-      className="text-muted hover:text-warm transition-colors duration-200 text-[14px]"
+      className="panel-enlace panel-enlace-suave w-full"
       aria-label="Cerrar sesión del back office"
     >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-[18px] w-[18px] shrink-0">
+        <path d="M15 4h4.5v16H15M10 8l-4 4 4 4M6 12h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
       Salir
     </button>
   );

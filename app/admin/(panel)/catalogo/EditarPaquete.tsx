@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SubirImagen from "@/components/SubirImagen";
+import { avisar } from "@/components/admin/avisar";
 
 export default function EditarPaquete({
   paquete,
@@ -35,8 +36,11 @@ export default function EditarPaquete({
     setGuardando(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return setError(data.error ?? "No se pudo guardar el paquete.");
+      const msg = data.error ?? "No se pudo guardar el paquete.";
+      avisar.error(msg);
+      return setError(msg);
     }
+    avisar.exito(`Paquete «${f.get("nombre")}» guardado.`);
     setAbierto(false);
     router.refresh();
   }

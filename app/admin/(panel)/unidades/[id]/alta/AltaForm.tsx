@@ -18,6 +18,7 @@ import {
 } from "@/lib/motor/canasta";
 import { ReglaError } from "@/lib/motor/errores";
 import CanastaEditor from "@/components/CanastaEditor";
+import { avisar } from "@/components/admin/avisar";
 
 export type VistaPaquete = { imagen: string | null; descripcion: string | null };
 
@@ -118,10 +119,13 @@ export default function AltaForm({
     setCargando(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo dar de alta.");
+      const msg = data.error ?? "No se pudo dar de alta.";
+      avisar.error(msg);
+      setError(msg);
       return;
     }
-    const { plan } = await res.json();
+    const { plan, comprador } = await res.json();
+    avisar.exito(`Comprador dado de alta con folio ${comprador.folio}.`);
     router.push(`/admin/planes/${plan.id}`);
   }
 

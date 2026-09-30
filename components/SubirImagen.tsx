@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { avisar } from "@/components/admin/avisar";
 
 /**
  * Elegir o arrastrar una imagen: se sube en cuanto se elige y el formulario
@@ -34,8 +35,13 @@ export default function SubirImagen({
     const res = await fetch("/api/imagenes", { method: "POST", body: datos });
     const r = await res.json().catch(() => ({}));
     setSubiendo(false);
-    if (!res.ok) return setError(r.error ?? "No se pudo subir la imagen.");
+    if (!res.ok) {
+      const msg = r.error ?? "No se pudo subir la imagen.";
+      avisar.error(msg);
+      return setError(msg);
+    }
     setUrl(r.url);
+    avisar.exito("Imagen subida. Guarda los cambios para aplicarla.");
     onCambio?.(r.url);
   }
 

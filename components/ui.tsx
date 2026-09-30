@@ -18,9 +18,9 @@ export function PageHead({
   return (
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div>
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="mt-2 text-[clamp(28px,4vw,40px)]">{titulo}</h1>
-        {descripcion && <p className="mt-3 max-w-[62ch] text-ink-2">{descripcion}</p>}
+        <p className="panel-etiqueta">{eyebrow}</p>
+        <h1 className="panel-titulo mt-3">{titulo}</h1>
+        {descripcion && <p className="mt-4 max-w-[60ch] text-[16.5px] text-ink-2">{descripcion}</p>}
       </div>
       {accion}
     </div>

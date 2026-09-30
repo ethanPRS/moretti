@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
@@ -37,16 +38,10 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
 
   if (!proyecto) notFound();
 
-  return (
-    <div className="flex flex-col gap-10">
-      <PageHead
-        eyebrow={proyecto.desarrollador.nombre}
-        titulo={proyecto.nombre}
-        descripcion={`${proyecto.etapaPipeline} · anticipo ${(Number(proyecto.porcentajeAnticipo) * 100).toFixed(0)} % · comisión del canal ${(Number(proyecto.porcentajeComision) * 100).toFixed(0)} % · entrega estimada ${proyecto.fechaEntregaUnidades?.toLocaleDateString("es-MX") ?? "por definir"}`}
-      />
+  const vendidas = proyecto.unidades.filter((u) => u.comprador).length;
+  const conPrecio = proyecto.prototipos.filter((p) => p.precios.length > 0).length;
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-[22px]">Unidades</h2>
+  const unidadesTabla = (
         <div className="card overflow-x-auto p-5">
           <table className="tbl">
             <thead>
@@ -116,15 +111,9 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             </tbody>
           </table>
         </div>
-      </section>
+  );
 
-      <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-[22px]">Prototipos y lista de precios</h2>
-          <p className="mt-2 text-[14px] text-ink-2">
-            Un precio nuevo no sobreescribe al anterior: cierra su vigencia y queda en el histórico.
-          </p>
-        </div>
+  const preciosTabla = (
         <div className="card overflow-x-auto p-5">
           <table className="tbl">
             <thead>
@@ -158,30 +147,58 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             </tbody>
           </table>
         </div>
-      </section>
+  );
 
-      <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-[22px]">Configurar el proyecto</h2>
-          <p className="mt-1 text-[14px] text-ink-2">
-            En orden: primero los prototipos, luego las unidades y los precios de cada paquete.
-          </p>
-        </div>
-        <FormulariosProyecto
-          proyectoId={proyecto.id}
-          prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
-          paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
-          datos={{
-            nombre: proyecto.nombre,
-            numeroUnidades: proyecto.numeroUnidades,
-            porcentajeAnticipo: Number(proyecto.porcentajeAnticipo) * 100,
-            porcentajeComision: Number(proyecto.porcentajeComision) * 100,
-            minimoPlan: Number(proyecto.minimoPlan),
-            fechaEntregaUnidades: proyecto.fechaEntregaUnidades?.toISOString().slice(0, 10) ?? null,
-            imagen: proyecto.imagen,
-          }}
+  return (
+    <div className="flex flex-col gap-10">
+      <div className="grid items-end gap-8 lg:grid-cols-[1fr_380px]">
+        <PageHead
+          eyebrow={proyecto.desarrollador.nombre}
+          titulo={proyecto.nombre}
+          descripcion={`${proyecto.etapaPipeline} · entrega estimada ${proyecto.fechaEntregaUnidades?.toLocaleDateString("es-MX", { month: "long", year: "numeric" }) ?? "por definir"}`}
         />
-      </section>
+        {proyecto.imagen && (
+          <div className="relative hidden aspect-[16/10] overflow-hidden rounded-[18px] bg-surface-2 lg:block">
+            <Image src={proyecto.imagen} alt="" fill sizes="380px" className="object-cover" />
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="panel-kpi" data-destacado="">
+          <p className="k">Unidades apartadas</p>
+          <p className="v">{vendidas} / {proyecto.unidades.length}</p>
+        </div>
+        <div className="panel-kpi">
+          <p className="k">Prototipos con precio</p>
+          <p className="v">{conPrecio} / {proyecto.prototipos.length}</p>
+        </div>
+        <div className="panel-kpi">
+          <p className="k">Anticipo</p>
+          <p className="v">{(Number(proyecto.porcentajeAnticipo) * 100).toFixed(0)}%</p>
+        </div>
+        <div className="panel-kpi">
+          <p className="k">Comisión día uno</p>
+          <p className="v">{(Number(proyecto.porcentajeComision) * 100).toFixed(0)}%</p>
+        </div>
+      </div>
+
+      <FormulariosProyecto
+        proyectoId={proyecto.id}
+        prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
+        paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
+        cuentas={{ prototipos: proyecto.prototipos.length, unidades: proyecto.unidades.length, conPrecio }}
+        tablas={{ unidades: unidadesTabla, precios: preciosTabla }}
+        datos={{
+          nombre: proyecto.nombre,
+          numeroUnidades: proyecto.numeroUnidades,
+          porcentajeAnticipo: Math.round(Number(proyecto.porcentajeAnticipo) * 10000) / 100,
+          porcentajeComision: Math.round(Number(proyecto.porcentajeComision) * 10000) / 100,
+          minimoPlan: Number(proyecto.minimoPlan),
+          fechaEntregaUnidades: proyecto.fechaEntregaUnidades?.toISOString().slice(0, 10) ?? null,
+          imagen: proyecto.imagen,
+        }}
+      />
     </div>
   );
 }
