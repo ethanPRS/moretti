@@ -7,7 +7,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function AdminLoginPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/admin";
+  // Sólo destinos dentro del back office: «//otro-sitio.com» no es un destino.
+  const pedido = params.get("next") ?? "";
+  const next = /^\/admin(\/[\w\-/[\]]*)?$/.test(pedido) ? pedido : "/admin";
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);

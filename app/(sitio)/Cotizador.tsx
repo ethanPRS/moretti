@@ -25,10 +25,13 @@ export default function Cotizador({
   desarrollos,
   armable,
   descuentoContado,
+  disponibles,
 }: {
   desarrollos: Desarrollo[];
   armable: PaqueteArmable | null;
   descuentoContado: number;
+  /** Unidades libres por prototipo. */
+  disponibles: Record<string, number>;
 }) {
   const [desarrolloId, setDesarrolloId] = useState(desarrollos[0]?.id ?? "");
   const [prototipoId, setPrototipoId] = useState(desarrollos[0]?.prototipos[0]?.id ?? "");
@@ -118,6 +121,7 @@ export default function Cotizador({
   ];
   const armables = prototipo.partidas.filter((p) => p.armable && p.precioLista !== null);
   const financiable = esFinanciable(cotizacion.total, desarrollo.minimoPlan);
+  const quedan = disponibles[prototipo.id] ?? 0;
   // El apartado recibe la misma elección: prototipo, paquete y, en «Arma el
   // tuyo», la canasta como `clave:cantidad` sin lo que va en cero.
   const ligaApartar =
@@ -277,7 +281,7 @@ export default function Cotizador({
         )}
 
         <div className="mt-auto pt-7">
-          {financiable && !cotizacion.aviso ? (
+          {financiable && !cotizacion.aviso && quedan > 0 ? (
             <Link href={ligaApartar} className="btn w-full">
               <ContenidoBoton texto="Quiero apartarlo" flecha />
             </Link>
@@ -286,7 +290,14 @@ export default function Cotizador({
               <ContenidoBoton texto="Quiero apartarlo" flecha />
             </button>
           )}
-          <p className="mt-3.5 text-[13px] text-muted">
+          <p className={`mt-3 text-[13px] ${quedan > 0 ? "text-accent" : "text-warm"}`}>
+            {quedan === 0
+              ? `Ya no quedan departamentos ${prototipo.clave} por apartar. Elige otro prototipo.`
+              : quedan <= 3
+                ? `Quedan ${quedan} ${quedan === 1 ? "departamento" : "departamentos"} ${prototipo.clave} por apartar.`
+                : `Hay ${quedan} departamentos ${prototipo.clave} disponibles.`}
+          </p>
+          <p className="mt-1.5 text-[13px] text-muted">
             Cotización informativa. El precio se confirma y se congela al firmar tu
             contrato con Moretti.
           </p>

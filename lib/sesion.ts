@@ -33,7 +33,7 @@ function b64uDecode(s: string): Uint8Array {
 
 async function clave(): Promise<CryptoKey> {
   const raw = process.env.SESSION_SECRET;
-  if (!raw) throw new Error("SESSION_SECRET no está definido en .env");
+  if (!raw || raw.length < 32) throw new Error("SESSION_SECRET falta en .env o es muy corto (mínimo 32 caracteres).");
   const enc = new TextEncoder();
   return crypto.subtle.importKey(
     "raw",
@@ -74,13 +74,13 @@ export async function verificarToken(token: string): Promise<boolean> {
     const valido = await crypto.subtle.verify(
       "HMAC",
       k,
-      b64uDecode(firmaB64).buffer as ArrayBuffer,
+      new Uint8Array(b64uDecode(firmaB64)),
       enc.encode(payloadB64)
     );
     if (!valido) return false;
 
     const payload = JSON.parse(new TextDecoder().decode(b64uDecode(payloadB64)));
-    if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
+    if (payload.sub !== "admin" || typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
 
     return true;
   } catch {
@@ -98,7 +98,8 @@ export function cookieOpciones(borrar = false) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
-    path: "/admin",
+    // "/" y no "/admin": la cookie también tiene que llegar a /api.
+    path: "/",
     maxAge: borrar ? 0 : TTL_MS / 1000,
   };
 }

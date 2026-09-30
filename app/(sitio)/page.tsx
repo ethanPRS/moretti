@@ -33,10 +33,13 @@ export default async function SitioPage() {
   // El cotizador lee el catálogo con la misma función que usa el motor al
   // generar el plan, y cotiza con la misma `cotizar`: lo que ve el comprador
   // es exactamente lo que se le va a cargar (S1-04).
-  const [catalogo, paquetes] = await Promise.all([
+  const [catalogo, paquetes, libres] = await Promise.all([
     cargarCatalogosPorProyecto(),
     prisma.paquete.findMany({ orderBy: { nivel: "asc" } }),
+    prisma.unidad.groupBy({ by: ["prototipoId"], where: { comprador: null }, _count: true }),
   ]);
+  // Unidades sin comprador por prototipo: sin ellas no hay qué apartar.
+  const disponibles = Object.fromEntries(libres.map((l) => [l.prototipoId, l._count]));
   const desarrollos = catalogo.proyectos.filter((p) => p.prototipos.length > 0);
 
   const armable = paquetes.find((p) => p.esArmable);
@@ -100,6 +103,7 @@ export default async function SitioPage() {
               desarrollos={desarrollos}
               armable={catalogo.armable}
               descuentoContado={DESCUENTO_CONTADO}
+              disponibles={disponibles}
             />
           </Reveal>
         </div>
