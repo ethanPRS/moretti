@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContenidoBoton } from "@/components/Boton";
 
 const secciones = [
   { href: "/#cotiza", label: "Cotiza" },
@@ -30,7 +31,7 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
               </Link>
             ))}
             <Link href="/#cotiza" className="btn btn-sm">
-              Cotizar mi depa
+              <ContenidoBoton texto="Cotizar mi depa" />
             </Link>
           </div>
         </nav>

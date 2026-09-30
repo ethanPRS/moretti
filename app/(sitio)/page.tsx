@@ -6,6 +6,7 @@ import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
 import Cotizador from "./Cotizador";
 import Reveal from "@/components/Reveal";
 import Link from "next/link";
+import { ContenidoBoton } from "@/components/Boton";
 
 const PASOS = [
   {
@@ -76,7 +77,7 @@ export default async function SitioPage() {
             className="btn hero-in mt-8"
             style={{ "--hero-delay": "330ms" } as React.CSSProperties}
           >
-            Cotizar mi depa
+            <ContenidoBoton texto="Cotizar mi depa" flecha />
           </a>
         </div>
       </section>
@@ -154,7 +155,7 @@ export default async function SitioPage() {
                         href={`/paquetes/${p.slug}`}
                         className="btn btn-ghost btn-sm mt-auto self-start"
                       >
-                        Ver qué incluye →
+                        <ContenidoBoton texto="Ver qué incluye" flecha />
                       </Link>
                     </div>
                   </article>
@@ -196,10 +197,10 @@ export default async function SitioPage() {
                   </ul>
                   <div className="mt-auto flex flex-wrap gap-3 pt-2">
                     <a href="#cotiza" className="btn btn-warm btn-sm">
-                      Armar el mío
+                      <ContenidoBoton texto="Armar el mío" flecha />
                     </a>
                     <Link href={`/paquetes/${armable.slug}`} className="btn btn-ghost btn-sm">
-                      Ver qué incluye →
+                      <ContenidoBoton texto="Ver qué incluye" flecha />
                     </Link>
                   </div>
                 </div>
@@ -247,7 +248,7 @@ export default async function SitioPage() {
               </p>
             </div>
             <a href="#cotiza" className="btn">
-              Cotizar mi depa
+              <ContenidoBoton texto="Cotizar mi depa" flecha />
             </a>
           </Reveal>
         </div>

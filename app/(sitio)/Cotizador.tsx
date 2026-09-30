@@ -13,6 +13,7 @@ import {
 } from "@/lib/motor/canasta";
 import { ReglaError } from "@/lib/motor/errores";
 import CanastaEditor from "@/components/CanastaEditor";
+import { ContenidoBoton } from "@/components/Boton";
 
 /** Un desarrollo con sus prototipos, tal como lo arma lib/motor/catalogo.ts. */
 export type Desarrollo = ProyectoCotizable & { prototipos: PrototipoCotizable[] };
@@ -265,8 +266,8 @@ export default function Cotizador({
         )}
 
         <div className="mt-auto pt-7">
-          <a href="#como" className="btn w-full text-center">
-            Quiero apartarlo
+          <a href="#como" className="btn w-full">
+            <ContenidoBoton texto="Quiero apartarlo" flecha />
           </a>
           <p className="mt-3.5 text-[13px] text-muted">
             Cotización informativa. El precio se confirma y se congela al firmar tu

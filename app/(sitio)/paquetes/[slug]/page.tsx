@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Reveal from "@/components/Reveal";
+import { ContenidoBoton } from "@/components/Boton";
 import {
   ETIQUETA_FAMILIA,
   FichaProducto,
@@ -298,13 +299,13 @@ export default async function PaqueteDetallePage({
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {otros.map((o) => (
                   <Link key={o.slug} href={`/paquetes/${o.slug}`} className="btn btn-ghost btn-sm">
-                    0{o.nivel} · {o.nombre}
+                    <ContenidoBoton texto={`0${o.nivel} · ${o.nombre}`} />
                   </Link>
                 ))}
               </div>
             </div>
             <Link href="/#cotiza" className="btn">
-              Cotizar mi depa
+              <ContenidoBoton texto="Cotizar mi depa" flecha />
             </Link>
           </Reveal>
         </div>
