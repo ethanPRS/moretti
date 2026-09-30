@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { calcularExhibicionesEnteras } from "@/lib/motor/enteros";
 import {
   canastaInicialArmaElTuyo,
@@ -117,6 +118,16 @@ export default function Cotizador({
   ];
   const armables = prototipo.partidas.filter((p) => p.armable && p.precioLista !== null);
   const financiable = esFinanciable(cotizacion.total, desarrollo.minimoPlan);
+  // El apartado recibe la misma elección: prototipo, paquete y, en «Arma el
+  // tuyo», la canasta como `clave:cantidad` sin lo que va en cero.
+  const ligaApartar =
+    `/apartar?prototipo=${prototipo.id}&paquete=${armando ? armable!.id : (cerrado?.id ?? "")}` +
+    (armando
+      ? `&canasta=${Object.entries(canasta)
+          .filter(([, n]) => n > 0)
+          .map(([k, n]) => `${k}:${n}`)
+          .join(",")}`
+      : "");
 
   return (
     <div className="card grid overflow-clip md:grid-cols-2">
@@ -266,9 +277,15 @@ export default function Cotizador({
         )}
 
         <div className="mt-auto pt-7">
-          <a href="#como" className="btn w-full">
-            <ContenidoBoton texto="Quiero apartarlo" flecha />
-          </a>
+          {financiable && !cotizacion.aviso ? (
+            <Link href={ligaApartar} className="btn w-full">
+              <ContenidoBoton texto="Quiero apartarlo" flecha />
+            </Link>
+          ) : (
+            <button type="button" className="btn w-full" disabled>
+              <ContenidoBoton texto="Quiero apartarlo" flecha />
+            </button>
+          )}
           <p className="mt-3.5 text-[13px] text-muted">
             Cotización informativa. El precio se confirma y se congela al firmar tu
             contrato con Moretti.
