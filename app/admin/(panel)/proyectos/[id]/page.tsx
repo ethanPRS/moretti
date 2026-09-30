@@ -160,11 +160,28 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         </div>
       </section>
 
-      <FormulariosProyecto
-        proyectoId={proyecto.id}
-        prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
-        paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
-      />
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-[22px]">Configurar el proyecto</h2>
+          <p className="mt-1 text-[14px] text-ink-2">
+            En orden: primero los prototipos, luego las unidades y los precios de cada paquete.
+          </p>
+        </div>
+        <FormulariosProyecto
+          proyectoId={proyecto.id}
+          prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
+          paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
+          datos={{
+            nombre: proyecto.nombre,
+            numeroUnidades: proyecto.numeroUnidades,
+            porcentajeAnticipo: Number(proyecto.porcentajeAnticipo) * 100,
+            porcentajeComision: Number(proyecto.porcentajeComision) * 100,
+            minimoPlan: Number(proyecto.minimoPlan),
+            fechaEntregaUnidades: proyecto.fechaEntregaUnidades?.toISOString().slice(0, 10) ?? null,
+            imagen: proyecto.imagen,
+          }}
+        />
+      </section>
     </div>
   );
 }

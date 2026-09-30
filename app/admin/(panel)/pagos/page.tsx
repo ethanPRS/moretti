@@ -6,7 +6,6 @@ import { PageHead, Money } from "@/components/ui";
 import {
   CUENTAS,
   MOVIMIENTOS_SIMULADOS,
-  PARAMETROS_ABIERTOS,
   WEBHOOKS_SIMULADOS,
   tarifaStripe,
   type EstadoMovimiento,
@@ -272,7 +271,7 @@ export default async function PagosPage() {
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <section className="flex flex-col gap-4">
           <h2 className="text-[22px]">Cuentas de Stripe Connect</h2>
           <div className="grid gap-3">
@@ -292,29 +291,6 @@ export default async function PagosPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[22px]">Por decidir</h2>
-          <div className="card p-5">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Parámetro</th>
-                  <th>Decide</th>
-                  <th>Bloquea</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PARAMETROS_ABIERTOS.map((p) => (
-                  <tr key={p.nombre}>
-                    <td>{p.nombre}</td>
-                    <td className="text-muted">{p.quien}</td>
-                    <td className="text-warm">{p.bloquea}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </div>
     </div>
   );

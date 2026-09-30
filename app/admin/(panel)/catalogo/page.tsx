@@ -2,6 +2,7 @@ import Image from "next/image";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead } from "@/components/ui";
+import EditarPaquete from "./EditarPaquete";
 
 export default async function PaquetesPage() {
   // En cada visita, no al compilar: lee la base.
@@ -15,8 +16,8 @@ export default async function PaquetesPage() {
     <div className="flex flex-col gap-9">
       <PageHead
         eyebrow="Los paquetes"
-        titulo="Cuatro niveles. Cada uno incluye todo el anterior."
-        descripcion="El precio cambia por prototipo, porque cambian los metros lineales de cocina y clósets y el número de climas."
+        titulo="Paquetes"
+        descripcion="Aquí se edita lo que se ve de cada paquete en el sitio: nombre, descripción, lo que incluye e imagen. Los precios se capturan por prototipo en la ficha de cada proyecto."
       />
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -62,13 +63,25 @@ export default async function PaquetesPage() {
                 </ul>
 
                 {desde !== null && (
-                  <p className="mt-auto pt-3 text-[13px] text-muted">
+                  <p className="pt-3 text-[13px] text-muted">
                     Desde{" "}
                     <span className="figure text-[17px] text-ink">
                       ${desde.toLocaleString("es-MX")}
                     </span>
                   </p>
                 )}
+                <div className="mt-auto pt-2">
+                  <EditarPaquete
+                    paquete={{
+                      id: p.id,
+                      nombre: p.nombre,
+                      descripcion: p.descripcion,
+                      partidas: p.partidas,
+                      imagen: p.imagen,
+                      esArmable: p.esArmable,
+                    }}
+                  />
+                </div>
               </div>
             </article>
           );

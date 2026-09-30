@@ -332,14 +332,39 @@ h3 {
 .field label,
 .field > span {
   display: block;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+/* Qué va en el campo y un ejemplo, debajo de él. */
+.ayuda {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: var(--muted);
-  margin-bottom: 7px;
+}
+.subir-imagen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--r-input);
+  background: var(--ground);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.subir-imagen[data-encima] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
+/* Un <input> sin type también es de texto: antes se quedaba sin estilo. */
+input:not([type]),
+textarea,
+input[type="url"],
+input[type="search"],
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -351,10 +376,31 @@ select {
   font-family: var(--font-poppins), sans-serif;
   font-size: 15.5px;
   padding: 10px 14px;
-  border: 1px solid var(--line-2);
+  border: 1px solid #c4bdb1;
   border-radius: var(--r-input);
-  background: var(--surface);
+  background: var(--ground);
   color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+input:not([type]):focus,
+textarea:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+textarea {
+  line-height: 1.5;
+  resize: vertical;
 }
 input:disabled {
   background: var(--surface-2);
