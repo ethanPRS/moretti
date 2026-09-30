@@ -149,7 +149,7 @@ export default async function PaqueteDetallePage({
                 </>
               )}
               <Link
-                href="/#cotiza"
+                href="/cotizar"
                 className={`btn mt-5 w-full text-center ${paquete.esArmable ? "btn-warm" : ""}`}
               >
                 {paquete.esArmable ? "Armar el mío" : "Cotizar con mi depa"}
@@ -304,7 +304,7 @@ export default async function PaqueteDetallePage({
                 ))}
               </div>
             </div>
-            <Link href="/#cotiza" className="btn">
+            <Link href="/cotizar" className="btn">
               <ContenidoBoton texto="Cotizar mi depa" flecha />
             </Link>
           </Reveal>

@@ -36,7 +36,7 @@ export default async function PanelPage() {
     { hecho: nUnidades > 0, titulo: "Da de alta las unidades", texto: "Torre y número; se pueden agregar por rango.", href: "/admin/proyectos", accion: "Ir" },
     { hecho: nPrecios > 0, titulo: "Ponle precio a cada paquete", texto: "Por prototipo. Sin precio, no aparece en el cotizador.", href: "/admin/proyectos", accion: "Ir" },
     { hecho: nPaquetesConFoto > 0, titulo: "Revisa los paquetes", texto: "Nombre, lo que incluyen e imagen para el sitio.", href: "/admin/catalogo", accion: "Editar" },
-    { hecho: planes.length > 0, titulo: "Aparta el primer depa", texto: "Desde el sitio o dando de alta al comprador en una unidad.", href: "/#cotiza", accion: "Ver sitio" },
+    { hecho: planes.length > 0, titulo: "Aparta el primer depa", texto: "Desde el sitio o dando de alta al comprador en una unidad.", href: "/cotizar", accion: "Ver sitio" },
   ];
   const pendientes = GUIA.filter((g) => !g.hecho).length;
 

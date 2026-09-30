@@ -351,7 +351,7 @@ export default function Apartado({
             <div className="flex justify-between"><dt className="text-ink-2">12 mensualidades</dt><dd className="tabular-nums">{mx(mensualidad)}</dd></div>
           </dl>
           {paso === "datos" && (
-            <Link href="/#cotiza" className="mt-5 inline-block text-[13.5px] text-accent hover:underline">
+            <Link href="/cotizar" className="mt-5 inline-block text-[13.5px] text-accent hover:underline">
               Cambiar paquete
             </Link>
           )}
@@ -367,7 +367,7 @@ function Aviso({ titulo, texto }: { titulo: string; texto: string }) {
       <p className="eyebrow">Aparta tu paquete</p>
       <h1 className="mt-3 text-[30px]">{titulo}</h1>
       <p className="mt-3 text-ink-2">{texto}</p>
-      <Link href="/#cotiza" className="btn mt-7">
+      <Link href="/cotizar" className="btn mt-7">
         <ContenidoBoton texto="Volver al cotizador" flecha />
       </Link>
     </section>

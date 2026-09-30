@@ -59,7 +59,7 @@ export default function Encabezado() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/#cotiza" className="btn btn-sm hidden sm:inline-flex">
+          <Link href="/cotizar" className="btn btn-sm hidden sm:inline-flex">
             <ContenidoBoton texto="Cotizar mi depa" />
           </Link>
           <button
@@ -90,7 +90,7 @@ export default function Encabezado() {
             </li>
           ))}
         </ul>
-        <Link href="/#cotiza" className="btn mt-8 self-start" onClick={() => setAbierto(false)}>
+        <Link href="/cotizar" className="btn mt-8 self-start" onClick={() => setAbierto(false)}>
           <ContenidoBoton texto="Cotizar mi depa" flecha />
         </Link>
       </div>

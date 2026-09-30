@@ -88,7 +88,7 @@ export default async function LandingPage() {
               mensualidades fijas mientras se construye.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Boton href="/#cotiza" flecha>Cotizar mi depa</Boton>
+              <Boton href="/cotizar" flecha>Cotizar mi depa</Boton>
               <Boton href="#instalado" variante="claro">Ver qué incluye</Boton>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default async function LandingPage() {
             hasta la entrega.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Boton href="/#cotiza" flecha>Cotizar mi depa</Boton>
+            <Boton href="/cotizar" flecha>Cotizar mi depa</Boton>
             <Boton href="#como" variante="secundario">Cómo se paga</Boton>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default async function ApartarPage({
         <p className="mt-3 text-ink-2">
           Para apartar necesitamos saber qué departamento compraste y qué paquete quieres.
         </p>
-        <Link href="/#cotiza" className="btn mt-7">Ir al cotizador</Link>
+        <Link href="/cotizar" className="btn mt-7">Ir al cotizador</Link>
       </section>
     );
   }
