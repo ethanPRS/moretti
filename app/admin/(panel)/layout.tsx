@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BtnSalir } from "@/components/admin/BtnSalir";
 
 export const metadata: Metadata = {
   title: "día uno · back office",
@@ -34,6 +35,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <Link href="/" className="text-muted hover:text-accent">
               Ver sitio
             </Link>
+            <BtnSalir />
           </div>
         </nav>
       </header>
