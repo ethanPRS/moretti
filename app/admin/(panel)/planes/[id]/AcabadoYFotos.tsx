@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { avisar } from "@/components/admin/avisar";
 
 type Opcion = [nombre: string, color: string];
 
@@ -40,9 +41,12 @@ export default function AcabadoYFotos({
     setTrabajando(false);
     if (!res || !res.ok) {
       const data = await res?.json().catch(() => ({}));
-      setError(data?.error ?? "No se pudo guardar. Revisa la conexión y vuelve a intentar.");
+      const msg = data?.error ?? "No se pudo guardar. Revisa la conexión y vuelve a intentar.";
+      avisar.error(msg);
+      setError(msg);
       return;
     }
+    avisar.exito("Cambios guardados.");
     router.refresh();
   }
 

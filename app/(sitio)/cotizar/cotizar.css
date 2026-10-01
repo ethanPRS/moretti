@@ -1,0 +1,297 @@
+/* Cotizador: el mismo lenguaje de la landing, con el resumen en tinta. */
+
+.cz-pagina {
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+  padding-block: clamp(48px, 7vw, 96px);
+}
+.cz-etiqueta {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
+}
+.cz-titulo {
+  margin-top: 12px;
+  font-size: clamp(36px, 5.4vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  max-width: 16ch;
+}
+
+.cz {
+  display: grid;
+  gap: 28px;
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .cz {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 40px;
+  }
+}
+.cz-pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+.cz-paso-titulo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  font-size: clamp(22px, 2.4vw, 28px);
+  letter-spacing: -0.03em;
+}
+.cz-n {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--ground);
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.cz-meta {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cz-ayuda {
+  margin-top: 12px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* Elecciones: tarjetas y fichas que se marcan en tinta. */
+.cz-desarrollo,
+.cz-chip,
+.cz-paquete {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+  transition:
+    border-color 0.3s var(--ease),
+    background-color 0.3s var(--ease),
+    transform 0.3s var(--ease);
+}
+.cz-desarrollo:hover,
+.cz-chip:hover,
+.cz-paquete:hover {
+  border-color: var(--line-2);
+  transform: translateY(-2px);
+}
+.cz-desarrollo[aria-pressed="true"],
+.cz-chip[aria-pressed="true"],
+.cz-paquete[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+/* Palomita en la esquina de lo elegido. */
+.cz-desarrollo[aria-pressed="true"]::after,
+.cz-paquete[aria-pressed="true"]::after {
+  content: "✓";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 13px;
+}
+
+.cz-desarrollos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.cz-desarrollo {
+  padding: 8px 8px 14px;
+  border-radius: 18px;
+}
+.cz-desarrollo-foto {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface-2);
+  margin-bottom: 8px;
+}
+.cz-desarrollo-nombre {
+  padding-inline: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.cz-desarrollo .cz-meta {
+  padding-inline: 6px;
+}
+
+.cz-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cz-chip {
+  padding: 10px 18px;
+  border-radius: 16px;
+  font-size: 15px;
+}
+.cz-chip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--ground);
+}
+.cz-chip[aria-pressed="true"] .cz-meta {
+  color: color-mix(in srgb, var(--ground) 70%, transparent);
+}
+
+.cz-paquetes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .cz-paquetes {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.cz-paquete {
+  padding: 8px 8px 14px;
+  border-radius: 18px;
+}
+.cz-paquete-foto {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface-2);
+  margin-bottom: 8px;
+}
+.cz-paquete > .cz-meta,
+.cz-paquete-nombre,
+.cz-paquete-precio {
+  padding-inline: 6px;
+}
+.cz-paquete-nombre {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.cz-paquete-precio {
+  font-size: 14.5px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+/* «Arma el tuyo» ocupa el renglón y va en el tono cálido. */
+.cz-paquete-armable {
+  grid-column: 1 / -1;
+  padding: 18px 20px;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--warm) 55%, transparent);
+  background: var(--warm-soft);
+}
+.cz-paquete-armable > * {
+  padding-inline: 0 !important;
+}
+.cz-paquete-armable .cz-meta {
+  color: var(--warm);
+}
+.cz-paquete-armable[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--warm);
+  box-shadow: 0 0 0 1px var(--warm);
+}
+.cz-paquete-armable[aria-pressed="true"]::after {
+  background: var(--warm);
+}
+
+/* ── Resumen ── */
+.cz-resumen {
+  padding: 28px;
+  border-radius: 24px;
+  background: var(--ink);
+  color: var(--ground);
+}
+@media (min-width: 1000px) {
+  .cz-resumen {
+    position: sticky;
+    top: 96px;
+  }
+}
+.cz-resumen-etiqueta {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ground) 65%, transparent);
+}
+.cz-resumen-paquete {
+  margin-top: 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.cz-total {
+  margin-top: 4px;
+  font-size: clamp(44px, 5vw, 60px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+.cz-resumen-nota {
+  margin-top: 8px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--ground) 65%, transparent);
+}
+.cz-plan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+.cz-plan dt {
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ground) 65%, transparent);
+}
+.cz-plan dd {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.cz-resumen-bloque {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+  color: color-mix(in srgb, var(--ground) 85%, transparent);
+}
+.cz-resumen-bloque b {
+  color: #e9c9b6;
+}
+/* Botón claro sobre la tinta. */
+.btn-claro-lleno {
+  --btn-bg: var(--ground);
+  --btn-fg: var(--ink);
+  --btn-bg-hover: var(--accent);
+  --btn-fg-hover: var(--ground);
+}

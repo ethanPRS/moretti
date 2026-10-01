@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { avisar } from "@/components/admin/avisar";
 import {
   ETIQUETA_FINANCIERO,
   TRANSICIONES_FINANCIERAS,
@@ -43,9 +44,12 @@ export default function EstadoFinancieroForm({
     setCargando(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo cambiar el estado.");
+      const msg = data.error ?? "No se pudo cambiar el estado.";
+      avisar.error(msg);
+      setError(msg);
       return;
     }
+    avisar.exito("Estado del plan actualizado.");
     setHacia("");
     setMotivo("");
     router.refresh();

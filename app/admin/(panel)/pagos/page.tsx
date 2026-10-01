@@ -6,7 +6,6 @@ import { PageHead, Money } from "@/components/ui";
 import {
   CUENTAS,
   MOVIMIENTOS_SIMULADOS,
-  PARAMETROS_ABIERTOS,
   WEBHOOKS_SIMULADOS,
   tarifaStripe,
   type EstadoMovimiento,
@@ -30,7 +29,25 @@ const fecha = (d: Date) =>
 const hora = (d: Date) =>
   d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
-export default async function PagosPage() {
+const FILTROS = [
+  { id: "todos", texto: "Todos" },
+  { id: "exitoso", texto: "Cobrados" },
+  { id: "atencion", texto: "Requieren atención" },
+  { id: "reembolsado", texto: "Reembolsados" },
+] as const;
+type Filtro = (typeof FILTROS)[number]["id"];
+
+const pasaFiltro = (m: Movimiento, f: Filtro) =>
+  f === "todos" ||
+  (f === "atencion" ? m.estado === "rechazado" || m.estado === "requiere_accion" : m.estado === f);
+
+export default async function PagosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filtro?: string }>;
+}) {
+  const pedido = (await searchParams).filtro;
+  const filtro: Filtro = FILTROS.some((f) => f.id === pedido) ? (pedido as Filtro) : "todos";
   // En cada visita, no al compilar: lee la base.
   await connection();
   const [pagos, proximas] = await Promise.all([
@@ -85,45 +102,52 @@ export default async function PagosPage() {
     .filter((m) => m.estado === "exitoso" || m.estado === "reembolsado")
     .reduce((acc, m) => acc + tarifaStripe(m.monto, m.metodo), 0);
   const neto = bruto - comision - stripe;
-  const atencion = movimientos.filter(
-    (m) => m.estado === "rechazado" || m.estado === "requiere_accion"
-  ).length;
+  const atencion = movimientos.filter((m) => pasaFiltro(m, "atencion")).length;
+  const visibles = movimientos.filter((m) => pasaFiltro(m, filtro));
+  const pct = (n: number) => (bruto > 0 ? (n / bruto) * 100 : 0);
 
   return (
     <div className="flex flex-col gap-10">
       <PageHead
-        eyebrow="Cobranza · Stripe"
-        titulo="Pagos"
-        descripcion="Lo que entró, lo que rebotó y lo que viene. Cargo directo sobre la cuenta de Moretti; la comisión del canal se separa en el mismo cobro."
+        eyebrow="Pagos · Stripe"
+        titulo="Lo que entró y lo que viene."
+        descripcion="Cada cobro es un cargo directo a la cuenta de Moretti; la comisión de día uno se separa en el mismo cobro."
         accion={<span className="chip info">Modo prueba · datos simulados</span>}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="kpi">
-          <p className="k">Cobrado</p>
-          <p className="v">
-            <Money valor={bruto} />
+      <section className="card flex flex-col gap-6 p-6 sm:p-8">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="panel-kpi" data-destacado="">
+            <p className="k">Cobrado</p>
+            <p className="v"><Money valor={bruto} /></p>
+          </div>
+          <div className="panel-kpi">
+            <p className="k">Neto a Moretti</p>
+            <p className="v"><Money valor={Math.round(neto)} /></p>
+          </div>
+          <div className="panel-kpi">
+            <p className="k">Comisión día uno</p>
+            <p className="v"><Money valor={comision} /></p>
+          </div>
+          <div className="panel-kpi">
+            <p className="k">Tarifa Stripe</p>
+            <p className="v"><Money valor={Math.round(stripe)} /></p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <p className="text-[14px] text-ink-2">Cómo se reparte cada peso cobrado:</p>
+          <div className="reparto" role="img" aria-label={`Moretti ${pct(neto).toFixed(1)} %, día uno ${pct(comision).toFixed(1)} %, Stripe ${pct(stripe).toFixed(1)} %`}>
+            <span style={{ width: `${pct(neto)}%`, background: "var(--accent)" }} />
+            <span style={{ width: `${pct(comision)}%`, background: "var(--warm)" }} />
+            <span style={{ width: `${pct(stripe)}%`, background: "var(--line-2)" }} />
+          </div>
+          <p className="reparto-leyenda">
+            <span><i style={{ background: "var(--accent)" }} />Moretti {pct(neto).toFixed(1)} %</span>
+            <span><i style={{ background: "var(--warm)" }} />día uno {pct(comision).toFixed(1)} %</span>
+            <span><i style={{ background: "var(--line-2)" }} />Stripe {pct(stripe).toFixed(1)} %</span>
           </p>
         </div>
-        <div className="kpi">
-          <p className="k">Comisión día uno</p>
-          <p className="v">
-            <Money valor={comision} />
-          </p>
-        </div>
-        <div className="kpi">
-          <p className="k">Tarifa Stripe</p>
-          <p className="v">
-            <Money valor={Math.round(stripe)} />
-          </p>
-        </div>
-        <div className="kpi">
-          <p className="k">Neto a Moretti</p>
-          <p className="v">
-            <Money valor={Math.round(neto)} />
-          </p>
-        </div>
-      </div>
+      </section>
 
       {atencion > 0 && (
         <p className="note blocked">
@@ -136,7 +160,23 @@ export default async function PagosPage() {
       )}
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-[22px]">Movimientos</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="text-[24px]">Movimientos</h2>
+          <nav className="filtros" aria-label="Filtrar movimientos">
+            {FILTROS.map((f) => (
+              <Link
+                key={f.id}
+                href={f.id === "todos" ? "/admin/pagos" : `/admin/pagos?filtro=${f.id}`}
+                className="filtro"
+                aria-current={filtro === f.id ? "true" : undefined}
+                scroll={false}
+              >
+                {f.texto}
+                <b>{movimientos.filter((m) => pasaFiltro(m, f.id)).length}</b>
+              </Link>
+            ))}
+          </nav>
+        </div>
         <div className="card overflow-x-auto p-5">
           <table className="tbl">
             <thead>
@@ -152,7 +192,12 @@ export default async function PagosPage() {
               </tr>
             </thead>
             <tbody>
-              {movimientos.map((m) => (
+              {visibles.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-muted">No hay movimientos con este filtro.</td>
+                </tr>
+              )}
+              {visibles.map((m) => (
                 <tr key={m.id}>
                   <td className="whitespace-nowrap">
                     {fecha(m.fecha)}
@@ -212,15 +257,19 @@ export default async function PagosPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="flex flex-col gap-4">
-          <h2 className="text-[22px]">Próximos cobros</h2>
+          <h2 className="text-[24px]">Próximos cobros</h2>
           <div className="card p-5">
             {proximas.length === 0 ? (
               <p className="text-ink-2">No hay mensualidades programadas.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-line">
                 {proximas.map((ex) => (
-                  <li key={ex.id} className="flex items-center justify-between gap-4 py-2.5">
-                    <div>
+                  <li key={ex.id} className="flex items-center gap-4 py-3">
+                    <span className="fecha-bloque">
+                      <b>{ex.fechaProgramada.getDate()}</b>
+                      <span>{ex.fechaProgramada.toLocaleDateString("es-MX", { month: "short" }).replace(".", "")}</span>
+                    </span>
+                    <div className="flex-1">
                       <Link
                         href={`/admin/planes/${ex.planId}`}
                         className="hover:text-accent"
@@ -231,12 +280,9 @@ export default async function PagosPage() {
                         Mensualidad {ex.numero} de 12 · fuera de sesión
                       </span>
                     </div>
-                    <div className="text-right">
-                      <p className="figure">
-                        <Money valor={Number(ex.monto)} />
-                      </p>
-                      <p className="text-[12px] text-muted">{fecha(ex.fechaProgramada)}</p>
-                    </div>
+                    <p className="figure text-[17px]">
+                      <Money valor={Number(ex.monto)} />
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -245,7 +291,7 @@ export default async function PagosPage() {
         </section>
 
         <section className="flex flex-col gap-4">
-          <h2 className="text-[22px]">Webhooks recientes</h2>
+          <h2 className="text-[24px]">Webhooks recientes</h2>
           <div className="card p-5">
             <ul className="flex flex-col divide-y divide-line">
               {WEBHOOKS_SIMULADOS.map((w, i) => (
@@ -272,9 +318,9 @@ export default async function PagosPage() {
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <section className="flex flex-col gap-4">
-          <h2 className="text-[22px]">Cuentas de Stripe Connect</h2>
+          <h2 className="text-[24px]">Cuentas de Stripe Connect</h2>
           <div className="grid gap-3">
             {CUENTAS.map((c) => (
               <div key={c.id} className="card flex items-start justify-between gap-4 p-5">
@@ -292,29 +338,6 @@ export default async function PagosPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[22px]">Por decidir</h2>
-          <div className="card p-5">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Parámetro</th>
-                  <th>Decide</th>
-                  <th>Bloquea</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PARAMETROS_ABIERTOS.map((p) => (
-                  <tr key={p.nombre}>
-                    <td>{p.nombre}</td>
-                    <td className="text-muted">{p.quien}</td>
-                    <td className="text-warm">{p.bloquea}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </div>
     </div>
   );

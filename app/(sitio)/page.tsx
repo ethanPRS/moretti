@@ -1,11 +1,9 @@
 import Image from "next/image";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { DESCUENTO_CONTADO } from "@/lib/motor/calculo";
-import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
-import Cotizador from "./Cotizador";
 import Reveal from "@/components/Reveal";
 import Link from "next/link";
+import { ContenidoBoton } from "@/components/Boton";
 
 const PASOS = [
   {
@@ -29,14 +27,8 @@ export default async function SitioPage() {
   // Se arma en cada visita, no al compilar: los precios y el mínimo del
   // proyecto viven en la base y cambian sin volver a desplegar.
   await connection();
-  // El cotizador lee el catálogo con la misma función que usa el motor al
-  // generar el plan, y cotiza con la misma `cotizar`: lo que ve el comprador
-  // es exactamente lo que se le va a cargar (S1-04).
-  const [catalogo, paquetes] = await Promise.all([
-    cargarCatalogosPorProyecto(),
-    prisma.paquete.findMany({ orderBy: { nivel: "asc" } }),
-  ]);
-  const desarrollos = catalogo.proyectos.filter((p) => p.prototipos.length > 0);
+  // El cotizador vive en /cotizar; aquí sólo se muestran los paquetes.
+  const paquetes = await prisma.paquete.findMany({ orderBy: { nivel: "asc" } });
 
   const armable = paquetes.find((p) => p.esArmable);
   const cerrados = paquetes.filter((p) => !p.esArmable);
@@ -72,34 +64,28 @@ export default async function SitioPage() {
             mensualidades fijas mientras se construye, sin banco y sin tocar tu hipoteca.
           </p>
           <a
-            href="#cotiza"
+            href="/cotizar"
             className="btn hero-in mt-8"
             style={{ "--hero-delay": "330ms" } as React.CSSProperties}
           >
-            Cotizar mi depa
+            <ContenidoBoton texto="Cotizar mi depa" flecha />
           </a>
         </div>
       </section>
 
       <section id="cotiza" className="py-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="max-w-[660px]">
-            <p className="eyebrow">Cotiza tu departamento</p>
-            <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Dinos cuál es tu depa y te decimos cuánto.
-            </h2>
-            <p className="mt-3 text-ink-2">
-              Cada prototipo lleva medidas distintas, así que el precio cambia. Elige el
-              tuyo y mueve entre paquetes para comparar.
-            </p>
-          </Reveal>
-
-          <Reveal className="mt-8" delay={120}>
-            <Cotizador
-              desarrollos={desarrollos}
-              armable={catalogo.armable}
-              descuentoContado={DESCUENTO_CONTADO}
-            />
+          <Reveal className="card flex flex-wrap items-center justify-between gap-6 bg-ink p-9 text-ground sm:p-12">
+            <div className="max-w-[560px]">
+              <p className="eyebrow text-[#b9cdbe]">Cotiza tu departamento</p>
+              <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
+                Dinos cuál es tu depa y te decimos cuánto pagas al mes.
+              </h2>
+              <p className="mt-3 text-[#dcd8d2]">Tres pasos: desarrollo, departamento y paquete.</p>
+            </div>
+            <Link href="/cotizar" className="btn btn-claro">
+              <ContenidoBoton texto="Abrir el cotizador" flecha />
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -154,7 +140,7 @@ export default async function SitioPage() {
                         href={`/paquetes/${p.slug}`}
                         className="btn btn-ghost btn-sm mt-auto self-start"
                       >
-                        Ver qué incluye →
+                        <ContenidoBoton texto="Ver qué incluye" flecha />
                       </Link>
                     </div>
                   </article>
@@ -195,11 +181,11 @@ export default async function SitioPage() {
                     ))}
                   </ul>
                   <div className="mt-auto flex flex-wrap gap-3 pt-2">
-                    <a href="#cotiza" className="btn btn-warm btn-sm">
-                      Armar el mío
+                    <a href="/cotizar" className="btn btn-warm btn-sm">
+                      <ContenidoBoton texto="Armar el mío" flecha />
                     </a>
                     <Link href={`/paquetes/${armable.slug}`} className="btn btn-ghost btn-sm">
-                      Ver qué incluye →
+                      <ContenidoBoton texto="Ver qué incluye" flecha />
                     </Link>
                   </div>
                 </div>
@@ -246,8 +232,8 @@ export default async function SitioPage() {
                 muestra.
               </p>
             </div>
-            <a href="#cotiza" className="btn">
-              Cotizar mi depa
+            <a href="/cotizar" className="btn">
+              <ContenidoBoton texto="Cotizar mi depa" flecha />
             </a>
           </Reveal>
         </div>

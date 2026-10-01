@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { avisar } from "@/components/admin/avisar";
 
 /**
  * 200 cobrado · 202 pendiente (el banco pidió autenticación) · 402 rechazado.
@@ -30,6 +31,9 @@ export default function CobrarButton({
       setAviso({ texto: data.mensaje ?? "El cobro quedó pendiente.", tipo: "info" });
     } else if (!res.ok) {
       setAviso({ texto: data.error ?? "No se pudo cobrar.", tipo: "error" });
+      avisar.error(data.error ?? "No se pudo cobrar.");
+    } else {
+      avisar.exito(esAnticipo ? "Anticipo cobrado. El precio quedó congelado." : "Cobro realizado.");
     }
     router.refresh();
   }

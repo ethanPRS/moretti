@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { avisar } from "@/components/admin/avisar";
 
 export default function ContratoForm({ unidadId }: { unidadId: string }) {
   const router = useRouter();
@@ -26,9 +27,12 @@ export default function ContratoForm({ unidadId }: { unidadId: string }) {
     setCargando(false);
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error ?? "No se pudo registrar el contrato.");
+      const msg = data.error ?? "No se pudo registrar el contrato.";
+      avisar.error(msg);
+      setError(msg);
       return;
     }
+    avisar.exito("Contrato registrado. Ya se puede cobrar el anticipo.");
     router.refresh();
   }
 

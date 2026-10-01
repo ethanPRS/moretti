@@ -186,6 +186,48 @@ export async function sembrarCatalogo() {
       })),
     });
   }
+
+  await completarUnidades();
+}
+
+/** Cuántas unidades libres tiene, al menos, cada prototipo para la demo. */
+const UNIDADES_MINIMAS = 4;
+
+/**
+ * Le da a cada prototipo al menos UNIDADES_MINIMAS unidades, para que el
+ * cotizador siempre tenga algo que apartar. Van en pisos altos (14 en
+ * adelante, uno por prototipo) para no chocar con las de la maqueta. Se
+ * puede correr sobre una base que ya tiene datos: sólo agrega lo que falta.
+ */
+export async function completarUnidades() {
+  const proyectos = await prisma.proyecto.findMany({
+    include: {
+      unidades: true,
+      prototipos: { include: { unidades: { include: { comprador: true } } }, orderBy: { clave: "asc" } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  let agregadas = 0;
+  for (const proyecto of proyectos) {
+    const torre = proyecto.unidades[0]?.torre ?? "A";
+    const ocupadas = new Set(proyecto.unidades.map((u) => `${u.torre}-${u.numero}`));
+    for (const [i, prototipo] of proyecto.prototipos.entries()) {
+      const libres = prototipo.unidades.filter((u) => !u.comprador).length;
+      const piso = 14 + i;
+      const nuevas: string[] = [];
+      for (let k = 1; libres + nuevas.length < UNIDADES_MINIMAS && k < 100; k++) {
+        const numero = `${piso}${String(k).padStart(2, "0")}`;
+        if (!ocupadas.has(`${torre}-${numero}`)) nuevas.push(numero);
+      }
+      if (nuevas.length === 0) continue;
+      await prisma.unidad.createMany({
+        data: nuevas.map((numero) => ({ proyectoId: proyecto.id, prototipoId: prototipo.id, torre, numero })),
+      });
+      nuevas.forEach((n) => ocupadas.add(`${torre}-${n}`));
+      agregadas += nuevas.length;
+    }
+  }
+  return agregadas;
 }
 
 /**
