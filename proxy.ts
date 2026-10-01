@@ -3,7 +3,7 @@
  *
  * - /admin/* requiere sesión, salvo /admin/login. Sin sesión → al login.
  * - /api/* requiere sesión, salvo lo que usa el sitio público (apartar y
- *   ver imágenes) y el login. Sin sesión → 401 en JSON.
+ *   ver imágenes), el login y el webhook de Stripe (firmado). Sin sesión → 401 en JSON.
  * - Toda petición que cambia algo (POST, PATCH, PUT, DELETE) a /api debe
  *   venir de este mismo sitio (encabezado Origin): freno a CSRF.
  */
@@ -19,6 +19,8 @@ const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   { metodo: "POST", ruta: /^\/api\/admin\/(login|logout)$/ },
   { metodo: "POST", ruta: /^\/api\/apartar(\/anticipo)?$/ },
   { metodo: "GET", ruta: /^\/api\/imagenes\/[^/]+$/ },
+  // Lo llama Stripe, sin sesión ni Origin; la ruta verifica la firma del evento.
+  { metodo: "POST", ruta: /^\/api\/stripe\/webhook$/ },
 ];
 
 const CAMBIA = new Set(["POST", "PUT", "PATCH", "DELETE"]);
