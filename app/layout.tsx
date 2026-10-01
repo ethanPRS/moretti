@@ -25,8 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="es"
       className={`${poppins.variable} ${plexMono.variable} h-full`}
+      // Extensiones como Grammarly agregan atributos a <html> y <body> antes
+      // de que React hidrate. Esto sólo ignora atributos de estas dos
+      // etiquetas; un desajuste dentro de la página sí se sigue reportando.
+      suppressHydrationWarning
     >
-      <body className="min-h-full">
+      <body className="min-h-full" suppressHydrationWarning>
         {/* Sin JS no hay quién revele: se muestra todo de una vez. */}
         <noscript>
           <style>{`[data-reveal]{opacity:1!important;transform:none!important}`}</style>
