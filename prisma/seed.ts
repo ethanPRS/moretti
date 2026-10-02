@@ -2,7 +2,6 @@ import { prisma } from "../lib/prisma";
 import {
   generarPlan,
   registrarContrato,
-  cobrarExhibicion,
 } from "../lib/motor/planes";
 
 /** Catálogo real tomado del cotizador de la maqueta del sitio. */
@@ -184,13 +183,6 @@ async function compradorDeEjemplo() {
     fechaFirma: new Date("2026-09-10T12:00:00"),
   });
 
-  const exhibiciones = await prisma.exhibicion.findMany({
-    where: { planId: plan.id, numero: { in: [0, 1, 2] } },
-    orderBy: { numero: "asc" },
-  });
-  for (const ex of exhibiciones) {
-    await cobrarExhibicion(ex.id);
-  }
 }
 
 main()

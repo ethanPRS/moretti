@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { cobrarExhibicion, ReglaError } from "@/lib/motor/planes";
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  try {
-    await cobrarExhibicion(id);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    if (err instanceof ReglaError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    throw err;
-  }
+  await params;
+  return NextResponse.json(
+    { error: "Esta ruta quedó deshabilitada: un cobro debe confirmarse en Stripe." },
+    { status: 410 }
+  );
 }

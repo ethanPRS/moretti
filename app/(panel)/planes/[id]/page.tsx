@@ -9,7 +9,7 @@ import {
   ChipEstadoPlan,
   CintaExhibiciones,
 } from "@/components/ui";
-import CobrarButton from "./CobrarButton";
+import CobrarConStripe from "./CobrarConStripe";
 import ContratoForm from "./ContratoForm";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
@@ -103,6 +103,96 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         />
       </div>
 
+<<<<<<< Updated upstream:app/(panel)/planes/[id]/page.tsx
+=======
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="label">Lo que se vendió · partida por partida</p>
+          <p className="text-[12.5px] text-muted">
+            {congelado
+              ? `Lista congelada con el anticipo el ${plan.fechaCongelamiento!.toLocaleDateString("es-MX")}: ya no cambia (R2).`
+              : "Cotización: la lista y sus precios se congelan al cobrar el anticipo."}
+          </p>
+        </div>
+        <div className="card overflow-x-auto p-5">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Partida</th>
+                <th>Acabado</th>
+                <th className="r">Cantidad</th>
+                <th className="r">Lista por pieza</th>
+                <th className="r">En este plan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {renglones.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="font-medium">{r.partida.nombre}</span>
+                    <span className="ml-2 inline-flex gap-1.5 align-middle">
+                      <span className="chip wait">{FAMILIA[r.partida.familia]}</span>
+                      {r.origen === "AGREGADA" && plan.modalidad !== ModalidadPlan.ARMA_EL_TUYO && (
+                        <span className="chip info">Agregada</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className={r.acabado ? "" : "text-muted"}>
+                    {r.acabado
+                      ? r.acabado.replace(/^Opción \d+ · /, "")
+                      : r.partida.acabados
+                        ? "Sin elegir"
+                        : "—"}
+                  </td>
+                  <td className="r">{r.cantidad}</td>
+                  <td className="r text-muted">
+                    <Money valor={Number(r.precioLista)} />
+                  </td>
+                  <td className="r">
+                    <Money valor={Number(r.precioCongelado)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={3} className="font-medium">
+                  Total {cuadra ? "· cuadra al peso con el plan (R7)" : "· NO cuadra con el plan"}
+                </td>
+                <td className={`r font-semibold ${cuadra ? "" : "text-warm"}`}>
+                  <Money valor={sumaRenglones} />
+                </td>
+                <td colSpan={4} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <p className="label">Acabados y fotos de referencia</p>
+          <p className="mt-1.5 max-w-[70ch] text-[13px] text-ink-2">
+            Lo que eligió el comprador viaja con la compra: al Anexo A, al expediente y a la orden
+            de producción de Moretti. Se puede cambiar hasta el levantamiento en obra.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {renglones.map((r) => (
+            <AcabadoYFotos
+              key={r.id}
+              renglonId={r.id}
+              nombre={r.cantidad > 1 ? `${r.partida.nombre} ×${r.cantidad}` : r.partida.nombre}
+              opciones={(r.partida.acabados as [string, string][] | null) ?? null}
+              elegido={r.acabado}
+              fotos={r.fotos.map((f) => ({ id: f.id, nombre: f.nombreOriginal }))}
+              bloqueo={bloqueoAcabados}
+            />
+          ))}
+        </div>
+      </section>
+
+>>>>>>> Stashed changes:app/admin/(panel)/planes/[id]/page.tsx
       <div className="flex flex-col gap-3">
         <p className="label">Avance del plan</p>
         <CintaExhibiciones exhibiciones={plan.exhibiciones} />
@@ -137,6 +227,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               <th className="r">Monto</th>
               <th className="r">Comisión</th>
               <th className="r">Estado</th>
+              <th>Referencia</th>
               <th className="r" />
             </tr>
           </thead>
@@ -161,13 +252,27 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                     <span className="chip wait">Programada</span>
                   )}
                 </td>
+                <td className="font-mono text-[11px] text-muted">
+                  {ex.pago?.referenciaStripe ?? "—"}
+                </td>
                 <td className="r">
                   {siguiente?.id === ex.id && plan.estado !== EstadoPlan.LIQUIDADO && (
-                    <CobrarButton
-                      exhibicionId={ex.id}
-                      esAnticipo={ex.numero === 0}
-                      bloqueado={ex.numero === 0 && !contrato}
-                    />
+                    ex.numero === 0 ? (
+                      <CobrarConStripe
+                        exhibicionId={ex.id}
+                        esAnticipo
+                        bloqueado={!contrato}
+                        stripeTestConfigurado={
+                          process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
+                          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true
+                        }
+                        bloqueoCobro="Pendiente de backend: guardar la tarjeta y el consentimiento para las mensualidades con uso off_session."
+                      />
+                    ) : (
+                      <span className="text-xs text-muted">
+                        Cobro automático pendiente de integración; no requiere volver a capturar tarjeta.
+                      </span>
+                    )
                   )}
                 </td>
               </tr>
