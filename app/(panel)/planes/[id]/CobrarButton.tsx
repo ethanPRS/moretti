@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream:app/(panel)/planes/[id]/CobrarButton.tsx
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -156,3 +157,6 @@ function PaymentForm({ clientSecret, onConfirmed }: PaymentFormProps) {
     </form>
   );
 }
+=======
+export { default } from "@/components/pagos/CobrarConStripe";
+>>>>>>> Stashed changes:app/admin/(panel)/planes/[id]/CobrarConStripe.tsx
