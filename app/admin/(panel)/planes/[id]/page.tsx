@@ -19,6 +19,8 @@ import ObraYEntrega from "./ObraYEntrega";
 import AccionesPlan from "./AccionesPlan";
 import { conceptoExhibicion } from "@/lib/motor/recalculo";
 import { versionesDelPlan } from "@/lib/motor/versiones";
+import { cargarCatalogo } from "@/lib/motor/catalogo";
+import { bloqueoPorLevantamiento } from "@/lib/motor/operacion";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -58,6 +60,12 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   });
 
   const versiones = await versionesDelPlan(plan.id);
+  // Los paquetes cerrados mayores con precio vigente: a dónde puede subir (T).
+  const catalogo = await cargarCatalogo(plan.comprador.unidad.prototipoId);
+  const nivelActual = catalogo.prototipo.paquetes.find((p) => p.id === plan.paqueteId)?.nivel ?? Infinity;
+  const paquetesMayores = catalogo.prototipo.paquetes
+    .filter((p) => p.nivel > nivelActual)
+    .map((p) => ({ id: p.id, nombre: `${p.nombre} · $${p.precio.toLocaleString("es-MX")}` }));
 
   // Lo vendido es la lista de renglones; el paquete es sólo la etiqueta (spec §4).
   const renglones = [...plan.renglones].sort(
@@ -328,7 +336,17 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {congelado && plan.estado === EstadoPlan.ACTIVO && (
-        <AccionesPlan planId={plan.id} saldo={Number(plan.saldo)} />
+        <AccionesPlan
+          planId={plan.id}
+          saldo={Number(plan.saldo)}
+          paquetesMayores={paquetesMayores}
+          bloqueoUpgrade={
+            bloqueoPorLevantamiento(unidad.estadoOperativo, "el paquete") ??
+            (plan.modalidad !== ModalidadPlan.PAQUETE
+              ? "El upgrade es de un paquete cerrado a otro mayor; este plan se armó partida por partida."
+              : null)
+          }
+        />
       )}
 
       {versiones.length > 0 && (

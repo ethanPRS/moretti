@@ -348,6 +348,8 @@ enum TipoExhibicion {
   ADELANTO
   /// El saldo completo en un cobro, sin descuento (actividad R).
   LIQUIDACION
+  /// Lo que se cobra hoy de la diferencia de un upgrade de paquete (actividad T).
+  UPGRADE
 }
 
 model Exhibicion {

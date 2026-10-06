@@ -30,7 +30,7 @@ import {
 type Tx = Prisma.TransactionClient;
 type Opciones = { pasarela?: Pasarela; usuario?: string };
 
-const VIVAS = [EstadoExhibicion.PENDIENTE, EstadoExhibicion.VENCIDA];
+export const VIVAS = [EstadoExhibicion.PENDIENTE, EstadoExhibicion.VENCIDA];
 const VIGENTES = [EstadoExhibicion.PENDIENTE, EstadoExhibicion.VENCIDA, EstadoExhibicion.PAGADA];
 
 export type FilaCalendario = {
@@ -41,7 +41,7 @@ export type FilaCalendario = {
   estado: EstadoExhibicion;
 };
 
-async function leerPlan(db: Tx | typeof prisma, planId: string) {
+export async function leerPlan(db: Tx | typeof prisma, planId: string) {
   const plan = await db.plan.findUnique({
     where: { id: planId },
     include: {
@@ -53,10 +53,10 @@ async function leerPlan(db: Tx | typeof prisma, planId: string) {
   return plan;
 }
 
-type PlanLeido = Awaited<ReturnType<typeof leerPlan>>;
+export type PlanLeido = Awaited<ReturnType<typeof leerPlan>>;
 
 /** Lo que se tiene que cumplir para adelantar o liquidar. Cada error dice qué falta. */
-function asegurarRecalculable(plan: PlanLeido, accion: string) {
+export function asegurarRecalculable(plan: PlanLeido, accion: string) {
   if (plan.estado === EstadoPlan.CANCELADO) throw new ReglaError(`El plan está cancelado: no procede ${accion}.`);
   if (plan.estado === EstadoPlan.LIQUIDADO) throw new ReglaError(`El plan ya está liquidado: no procede ${accion}.`);
   if (!plan.fechaCongelamiento) {
@@ -67,17 +67,17 @@ function asegurarRecalculable(plan: PlanLeido, accion: string) {
   }
   const enCurso = plan.exhibiciones.find(
     (e) =>
-      (e.tipo === TipoExhibicion.ADELANTO || e.tipo === TipoExhibicion.LIQUIDACION) &&
+      (e.tipo === TipoExhibicion.ADELANTO || e.tipo === TipoExhibicion.LIQUIDACION || e.tipo === TipoExhibicion.UPGRADE) &&
       e.estado !== EstadoExhibicion.PAGADA
   );
   if (enCurso) {
     throw new ReglaError(
-      `Ya hay ${enCurso.tipo === TipoExhibicion.ADELANTO ? "un adelanto" : "una liquidación"} de ${mx(Number(enCurso.monto))} esperando confirmación del banco. Espera a que se confirme o se rechace antes de hacer otro recálculo.`
+      `Ya hay ${enCurso.tipo === TipoExhibicion.ADELANTO ? "un adelanto" : enCurso.tipo === TipoExhibicion.UPGRADE ? "un upgrade" : "una liquidación"} de ${mx(Number(enCurso.monto))} esperando confirmación del banco. Espera a que se confirme o se rechace antes de hacer otro recálculo.`
     );
   }
 }
 
-function vivasDe(plan: PlanLeido): ExhibicionViva[] {
+export function vivasDe(plan: PlanLeido): ExhibicionViva[] {
   return plan.exhibiciones
     .filter((e) => VIVAS.includes(e.estado as (typeof VIVAS)[number]))
     .map((e) => ({ id: e.id, numero: e.numero, monto: aCentavos(e.monto.toFixed(2)), fechaProgramada: e.fechaProgramada }));
@@ -93,7 +93,7 @@ function fotoDe(exhibiciones: PlanLeido["exhibiciones"]): FilaCalendario[] {
   }));
 }
 
-const pesos = (centavos: number) => new Prisma.Decimal(centavos).div(100);
+export const pesos = (centavos: number) => new Prisma.Decimal(centavos).div(100);
 
 export type VistaPrevia = {
   saldoAntes: number;
@@ -243,7 +243,7 @@ function describirAdelanto(r: Recalculo): string {
  * Crea la versión siguiente del plan. Condicionada a la versión leída: si
  * otro recálculo entró en medio, éste no se aplica. Al final verifica R7.
  */
-async function nuevaVersion(
+export async function nuevaVersion(
   tx: Tx,
   plan: PlanLeido,
   p: {

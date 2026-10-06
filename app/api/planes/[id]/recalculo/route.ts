@@ -7,10 +7,12 @@ import {
   previsualizarAdelanto,
   previsualizarLiquidacion,
 } from "@/lib/motor/versiones";
+import { ejecutarUpgrade, previsualizarUpgrade } from "@/lib/motor/upgrade";
 
 const Cuerpo = z.discriminatedUnion("accion", [
   z.object({ accion: z.literal("adelanto"), monto: z.string().trim().min(1).max(20), confirmar: z.boolean() }),
   z.object({ accion: z.literal("liquidacion"), confirmar: z.boolean() }),
+  z.object({ accion: z.literal("upgrade"), paqueteId: z.string().min(1).max(40), confirmar: z.boolean() }),
 ]);
 
 /**
@@ -28,13 +30,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const d = datos.data;
   try {
     if (!d.confirmar) {
-      const vista = d.accion === "adelanto" ? await previsualizarAdelanto(id, d.monto) : await previsualizarLiquidacion(id);
+      const vista =
+        d.accion === "adelanto"
+          ? await previsualizarAdelanto(id, d.monto)
+          : d.accion === "upgrade"
+            ? await previsualizarUpgrade(id, d.paqueteId)
+            : await previsualizarLiquidacion(id);
       return NextResponse.json({ vista });
     }
     const resultado =
       d.accion === "adelanto"
         ? await ejecutarAdelanto({ planId: id, monto: d.monto })
-        : await ejecutarLiquidacion({ planId: id });
+        : d.accion === "upgrade"
+          ? await ejecutarUpgrade({ planId: id, paqueteId: d.paqueteId })
+          : await ejecutarLiquidacion({ planId: id });
     switch (resultado.estado) {
       case "exitoso":
         return NextResponse.json({ ok: true, version: resultado.version });

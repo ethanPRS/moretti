@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aCentavos, calcularAdelanto, calcularLiquidacion, type ExhibicionViva } from "./recalculo";
+import { aCentavos, calcularAdelanto, calcularLiquidacion, calcularUpgrade, renglonesDelUpgrade, type ExhibicionViva } from "./recalculo";
 
 const fecha = (mes: number) => new Date(2026, 9 + mes, 5);
 /** Las 12 mensualidades del DEPA 2R con Casa Lista ($147,300): 11 de $8,593 y la última de $8,587. */
@@ -90,5 +90,40 @@ describe("aCentavos", () => {
   it("rechaza lo que no es un monto", () => {
     expect(() => aCentavos("12.345")).toThrow(/hasta dos decimales/);
     expect(() => aCentavos("-5")).toThrow(/no es válido/);
+  });
+});
+
+describe("T · upgrade: cobra hoy el % de anticipo de la diferencia y reparte el resto sin alargar el plan", () => {
+  it("con $30,000 de diferencia y 30 %: $9,000 hoy y $21,000 más en las 12 que quedan", () => {
+    const u = calcularUpgrade(plan(), aCentavos(30000), 3000);
+    expect(u.cobroHoy).toBe(900000);
+    expect(u.aRepartir).toBe(2100000);
+    expect(u.quedan).toHaveLength(12);
+    // (103,110 + 21,000) / 12 = 10,342.5 → 10,343 × 11 y la última 10,337.
+    expect(u.quedan.slice(0, 11).every((q) => q.monto === 1034300)).toBe(true);
+    expect(u.quedan[11].monto).toBe(1033700);
+    expect(u.cobroHoy + suma(u.quedan)).toBe(suma(plan()) + 3000000);
+    // Mismas fechas: el plan no se alarga.
+    expect(u.quedan.map((q) => q.fechaProgramada)).toEqual(plan().map((e) => e.fechaProgramada));
+  });
+
+  it("una diferencia de cero o negativa no es upgrade", () => {
+    expect(() => calcularUpgrade(plan(), 0, 3000)).toThrow(/tiene que costar más/);
+  });
+});
+
+describe("T · renglones que agrega el upgrade", () => {
+  it("sólo lo nuevo, repartiendo la diferencia por precio de lista; los existentes no se tocan", () => {
+    const r = renglonesDelUpgrade({ cocina: 1 }, { cocina: 1, clima: 2, persianas: 1 }, { cocina: 78000, clima: 15000, persianas: 10000 }, 36000);
+    expect(r).toEqual([
+      { clave: "clima", cantidad: 2, precioLista: 15000, importe: 27000 },
+      { clave: "persianas", cantidad: 1, precioLista: 10000, importe: 9000 },
+    ]);
+  });
+
+  it("si el paquete nuevo no contiene al viejo con las mismas cantidades, no procede", () => {
+    expect(() => renglonesDelUpgrade({ cocina: 1, clima: 2 }, { cocina: 1, clima: 3 }, { cocina: 1, clima: 1 }, 100)).toThrow(
+      /no contiene todo lo del actual/
+    );
   });
 });

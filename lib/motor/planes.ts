@@ -612,7 +612,7 @@ async function aplicarPago(p: {
           tipo: esAnticipo ? "anticipo_cobrado" : tipoEventoCobro(exhibicion.tipo),
           estadoAnterior: unidad.estadoFinanciero,
           estadoNuevo,
-          comentario: exhibicion.tipo === TipoExhibicion.ADELANTO || exhibicion.tipo === TipoExhibicion.LIQUIDACION
+          comentario: exhibicion.tipo === TipoExhibicion.ADELANTO || exhibicion.tipo === TipoExhibicion.LIQUIDACION || exhibicion.tipo === TipoExhibicion.UPGRADE
             ? `${capitalizar(conceptoDe(exhibicion.numero, exhibicion.tipo))} de ${mx(monto.toNumber())} cobrado (referencia ${p.referencia}). Saldo: ${mx((saldo.lt(0) ? new Decimal(0) : saldo).toNumber())}. Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`
             : esAnticipo
             ? `Anticipo de ${mx(monto.toNumber())} cobrado (referencia ${p.referencia}). Precio congelado en ${mx(new Decimal(plan.montoCongelado).toNumber())} con sus ${plan.renglones.length} partidas: la lista ya no cambia (R2). Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`
@@ -674,12 +674,14 @@ function aCentavos(monto: Prisma.Decimal): number {
 function tipoEventoCobro(tipo: TipoExhibicion) {
   if (tipo === TipoExhibicion.ADELANTO) return "adelanto_cobrado";
   if (tipo === TipoExhibicion.LIQUIDACION) return "liquidacion_cobrada";
+  if (tipo === TipoExhibicion.UPGRADE) return "upgrade_cobrado";
   return "exhibicion_cobrada";
 }
 
 function conceptoDe(numero: number, tipo: TipoExhibicion = TipoExhibicion.MENSUALIDAD) {
   if (tipo === TipoExhibicion.ADELANTO) return "el adelanto";
   if (tipo === TipoExhibicion.LIQUIDACION) return "la liquidación anticipada";
+  if (tipo === TipoExhibicion.UPGRADE) return "la diferencia del upgrade";
   return numero === 0 ? "el anticipo" : `la mensualidad ${numero}`;
 }
 
