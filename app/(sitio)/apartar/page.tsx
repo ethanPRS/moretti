@@ -62,6 +62,10 @@ export default async function ApartarPage({
       }
       canasta={esArmable ? leerCanasta(q.canasta) : undefined}
       unidades={unidades}
+      stripeTestConfigurado={
+        process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true
+      }
     />
   );
 }

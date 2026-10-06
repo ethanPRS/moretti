@@ -53,6 +53,7 @@ async function main() {
       paquete = await prisma.paquete.create({
         data: {
           nivel: paquetePrueba.nivel,
+          slug: paquetePrueba.nombre.toLowerCase().replace(" ", "-"),
           nombre: paquetePrueba.nombre,
           descripcion: paquetePrueba.descripcion,
           partidas: [...paquetePrueba.partidas],

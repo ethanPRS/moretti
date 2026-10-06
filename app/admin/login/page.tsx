@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, FormEvent } from "react";
+import { Suspense, useState, useRef, useEffect, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminLoginPage() {
+function FormularioLogin() {
   const router = useRouter();
   const params = useSearchParams();
   // Sólo destinos dentro del back office: «//otro-sitio.com» no es un destino.
@@ -307,5 +307,14 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// useSearchParams necesita un Suspense para que la página compile en producción.
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <FormularioLogin />
+    </Suspense>
   );
 }

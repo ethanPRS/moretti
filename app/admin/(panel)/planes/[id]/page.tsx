@@ -11,6 +11,7 @@ import {
   CintaExhibiciones,
 } from "@/components/ui";
 import CobrarButton from "./CobrarButton";
+import CobrarConStripe from "@/components/pagos/CobrarConStripe";
 import ContratoForm from "./ContratoForm";
 import AcabadoYFotos from "./AcabadoYFotos";
 import EstadoFinancieroForm from "./EstadoFinancieroForm";
@@ -76,6 +77,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   );
   const congelado = Boolean(plan.fechaCongelamiento);
   const siguiente = plan.exhibiciones.find((e) => e.estado !== EstadoExhibicion.PAGADA);
+  const stripeTestConfigurado =
+    process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true;
 
   return (
     <div className="flex flex-col gap-9">
@@ -258,6 +262,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               <th className="r">Monto</th>
               <th className="r">Comisión</th>
               <th className="r">Estado</th>
+              <th>Referencia</th>
               <th className="r" />
             </tr>
           </thead>
@@ -282,13 +287,26 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                     <span className="chip wait">Programada</span>
                   )}
                 </td>
+                <td className="font-mono text-[11px] text-muted">
+                  {ex.pago?.referenciaStripe ?? "—"}
+                </td>
                 <td className="r">
                   {siguiente?.id === ex.id && plan.estado !== EstadoPlan.LIQUIDADO && (
-                    <CobrarButton
-                      exhibicionId={ex.id}
-                      esAnticipo={ex.numero === 0}
-                      bloqueado={ex.numero === 0 && !contrato}
-                    />
+                    ex.numero === 0 && stripeTestConfigurado ? (
+                      <CobrarConStripe
+                        exhibicionId={ex.id}
+                        esAnticipo
+                        bloqueado={!contrato}
+                        stripeTestConfigurado
+                        bloqueoCobro="Pendiente de backend: guardar la tarjeta y el consentimiento para las mensualidades con uso off_session."
+                      />
+                    ) : (
+                      <CobrarButton
+                        exhibicionId={ex.id}
+                        esAnticipo={ex.numero === 0}
+                        bloqueado={ex.numero === 0 && !contrato}
+                      />
+                    )
                   )}
                 </td>
               </tr>

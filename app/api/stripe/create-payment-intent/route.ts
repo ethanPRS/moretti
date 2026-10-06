@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     if (intento.stripePaymentIntentId) {
       const existingIntent = await stripe.paymentIntents.retrieve(
         intento.stripePaymentIntentId,
+        {},
         { stripeAccount: intento.stripeAccountId }
       );
       return NextResponse.json({

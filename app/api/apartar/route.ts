@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { prisma } from "@/lib/prisma";
 import { darDeAlta, registrarContrato, ReglaError } from "@/lib/motor/planes";
 
 /**
  * El comprador aparta desde el sitio: se da de alta con su canasta y firma el
- * contrato simulado con Moretti. El anticipo se cobra en el siguiente paso
- * (POST /api/apartar/anticipo), porque R1 pide el contrato antes del cobro.
+ * contrato simulado con Moretti. Devuelve el calendario persistido para que
+ * el navegador presente los importes que calculó el motor.
  *
  * Prototipo: el contrato es una simulación y la firma es el nombre escrito.
  * Falta sesión y protección contra abuso antes de abrirlo al público (B-3).
@@ -53,7 +54,46 @@ export async function POST(req: NextRequest) {
       quienFirmo: d.firma,
       fechaFirma: new Date(),
     });
-    return NextResponse.json({ planId: plan.id, folio: comprador.folio }, { status: 201 });
+    const detalle = await prisma.plan.findUnique({
+      where: { id: plan.id },
+      include: {
+        paquete: true,
+        comprador: { include: { unidad: { include: { proyecto: true, prototipo: true } } } },
+        renglones: { include: { partida: true } },
+        exhibiciones: { orderBy: { numero: "asc" } },
+      },
+    });
+    if (!detalle) throw new Error("No se pudo recuperar el plan recién creado.");
+
+    const unidad = detalle.comprador.unidad;
+    return NextResponse.json(
+      {
+        planId: plan.id,
+        folio: comprador.folio,
+        resumen: {
+          proyecto: unidad.proyecto.nombre,
+          prototipo: unidad.prototipo.clave,
+          torre: unidad.torre,
+          unidad: unidad.numero,
+          paquete: detalle.paquete.nombre,
+          total: Number(detalle.montoCongelado),
+          saldo: Number(detalle.saldo),
+          partidas: detalle.renglones.map((r) => ({
+            nombre: r.partida.nombre,
+            cantidad: r.cantidad,
+            importe: Number(r.precioCongelado),
+          })),
+          exhibiciones: detalle.exhibiciones.map((e) => ({
+            id: e.id,
+            numero: e.numero,
+            monto: Number(e.monto),
+            fechaProgramada: e.fechaProgramada.toISOString(),
+            estado: e.estado,
+          })),
+        },
+      },
+      { status: 201 }
+    );
   } catch (err) {
     if (err instanceof ReglaError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
