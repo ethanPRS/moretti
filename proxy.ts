@@ -17,7 +17,10 @@ export const config = {
 
 const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   { metodo: "POST", ruta: /^\/api\/admin\/(login|logout)$/ },
-  { metodo: "POST", ruta: /^\/api\/apartar(\/anticipo)?$/ },
+  // Sólo el alta con contrato simulado. El anticipo ya no se cobra por una
+  // ruta pública con el id del plan: cualquiera con un id lo habría «pagado»
+  // (auditoría del 6 oct, H-2).
+  { metodo: "POST", ruta: /^\/api\/apartar$/ },
   { metodo: "GET", ruta: /^\/api\/imagenes\/[^/]+$/ },
   // Lo llama Stripe, sin sesión ni Origin; la ruta verifica la firma del evento.
   { metodo: "POST", ruta: /^\/api\/stripe\/webhook$/ },

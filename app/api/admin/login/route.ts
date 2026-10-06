@@ -10,13 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { crearToken, cookieOpciones } from "@/lib/sesion";
 import { verificarContrasena } from "@/lib/contrasena";
 import { anotarFalla, bloqueadoPor, limpiar } from "@/lib/limite-intentos";
-
-function ipDe(req: NextRequest) {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "local";
-}
+import { ipCliente } from "@/lib/ip";
 
 export async function POST(req: NextRequest) {
-  const ip = ipDe(req);
+  const ip = ipCliente(req.headers);
   const espera = bloqueadoPor(ip);
   if (espera > 0) {
     const minutos = Math.ceil(espera / 60000);

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { guardarImagen } from "@/lib/imagenes";
+import { guardarImagen, MAX_BYTES_IMAGEN } from "@/lib/imagenes";
 import { ReglaError } from "@/lib/motor/errores";
 
-/** Sube una imagen del back office (campo «archivo»). Falta sesión en /admin (B-3). */
+/** Sube una imagen del back office (campo «archivo»). Detrás del login (proxy.ts). */
 export async function POST(req: NextRequest) {
+  // Se corta antes de leer el cuerpo: si no, un archivo enorme se cargaría
+  // completo en memoria antes de rechazarlo (auditoría 6 oct, H-8).
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BYTES_IMAGEN + 64 * 1024) {
+    return NextResponse.json({ error: "La imagen pesa más de 8 MB. Redúcela o expórtala como JPG." }, { status: 413 });
+  }
   const form = await req.formData().catch(() => null);
   const archivo = form?.get("archivo");
   if (!(archivo instanceof File)) {

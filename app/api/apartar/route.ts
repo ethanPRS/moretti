@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { darDeAlta, registrarContrato, ReglaError } from "@/lib/motor/planes";
+import { limiteApartar } from "@/lib/limite-intentos";
+import { ipCliente } from "@/lib/ip";
 
 /**
  * El comprador aparta desde el sitio: se da de alta con su canasta y firma el
@@ -12,12 +14,12 @@ import { darDeAlta, registrarContrato, ReglaError } from "@/lib/motor/planes";
  * Falta sesión y protección contra abuso antes de abrirlo al público (B-3).
  */
 const Apartado = z.object({
-  nombre: z.string().trim().min(3),
-  contacto: z.string().trim().min(5),
-  unidadId: z.string().min(1),
-  paqueteId: z.string().min(1),
-  canasta: z.record(z.string(), z.number().int().min(0)).optional(),
-  firma: z.string().trim().min(3),
+  nombre: z.string().trim().min(3).max(120),
+  contacto: z.string().trim().min(5).max(120),
+  unidadId: z.string().min(1).max(40),
+  paqueteId: z.string().min(1).max(40),
+  canasta: z.record(z.string().max(40), z.number().int().min(0).max(99)).optional(),
+  firma: z.string().trim().min(3).max(120),
   acepta: z.literal(true),
 });
 
@@ -25,6 +27,16 @@ const normal = (s: string) =>
   s.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
 
 export async function POST(req: NextRequest) {
+  // Freno: un apartado ocupa la unidad. Sin esto, cualquiera podría apartar
+  // todo el inventario con datos falsos (auditoría 6 oct, H-3).
+  const ip = ipCliente(req.headers);
+  const espera = limiteApartar.bloqueadoPor(ip);
+  if (espera > 0) {
+    return NextResponse.json(
+      { error: "Se hicieron demasiados apartados desde aquí. Intenta más tarde o escríbenos." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(espera / 1000)) } }
+    );
+  }
   const datos = Apartado.safeParse(await req.json().catch(() => null));
   if (!datos.success) {
     return NextResponse.json(
@@ -54,6 +66,7 @@ export async function POST(req: NextRequest) {
       quienFirmo: d.firma,
       fechaFirma: new Date(),
     });
+    limiteApartar.anotar(ip);
     const detalle = await prisma.plan.findUnique({
       where: { id: plan.id },
       include: {

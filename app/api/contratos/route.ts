@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const Nuevo = z.object({
+  unidadId: z.string().min(1).max(40),
+  archivoNombre: z.string().trim().min(1).max(200),
+  quienFirmo: z.string().trim().min(1).max(200),
+  fechaFirma: z.string().regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/),
+});
 import { registrarContrato, ReglaError } from "@/lib/motor/planes";
 
 /**
@@ -12,7 +20,11 @@ function fechaLocal(valor: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { unidadId, archivoNombre, quienFirmo, fechaFirma } = await req.json();
+  const datos = Nuevo.safeParse(await req.json().catch(() => null));
+  if (!datos.success) {
+    return NextResponse.json({ error: "Falta el archivo, quién firmó o la fecha de firma." }, { status: 400 });
+  }
+  const { unidadId, archivoNombre, quienFirmo, fechaFirma } = datos.data;
   if (!unidadId || !archivoNombre || !quienFirmo || !fechaFirma) {
     return NextResponse.json(
       { error: "Falta el archivo, quién firmó o la fecha de firma." },
