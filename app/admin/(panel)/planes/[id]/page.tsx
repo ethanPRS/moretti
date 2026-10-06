@@ -16,6 +16,9 @@ import ContratoForm from "./ContratoForm";
 import AcabadoYFotos from "./AcabadoYFotos";
 import EstadoFinancieroForm from "./EstadoFinancieroForm";
 import ObraYEntrega from "./ObraYEntrega";
+import AccionesPlan from "./AccionesPlan";
+import { conceptoExhibicion } from "@/lib/motor/recalculo";
+import { versionesDelPlan } from "@/lib/motor/versiones";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -32,7 +35,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       },
       paquete: true,
       renglones: { include: { partida: true, fotos: { orderBy: { posicion: "asc" } } } },
-      exhibiciones: { orderBy: { numero: "asc" }, include: { pago: true } },
+      // Sólo lo vigente: lo reemplazado o cancelado por un recálculo vive en
+      // su versión (R4) y se consulta abajo, en «Versiones del plan».
+      exhibiciones: {
+        where: { estado: { in: [EstadoExhibicion.PENDIENTE, EstadoExhibicion.VENCIDA, EstadoExhibicion.PAGADA] } },
+        orderBy: [{ fechaProgramada: "asc" }, { numero: "asc" }],
+        include: { pago: true },
+      },
     },
   });
   if (!plan) notFound();
@@ -47,6 +56,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     },
     orderBy: { fecha: "desc" },
   });
+
+  const versiones = await versionesDelPlan(plan.id);
 
   // Lo vendido es la lista de renglones; el paquete es sólo la etiqueta (spec §4).
   const renglones = [...plan.renglones].sort(
@@ -134,7 +145,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               : "Todavía puede cambiar"
           }
         />
-        <Stat etiqueta="Cobrado" valor={<Money valor={cobrado} />} nota={`${pagadas.length} de 13`} />
+        <Stat etiqueta="Cobrado" valor={<Money valor={cobrado} />} nota={`${pagadas.length} de ${plan.exhibiciones.length}${plan.version > 1 ? ` · versión ${plan.version}` : ""}`} />
         <Stat etiqueta="Saldo" valor={<Money valor={Number(plan.saldo)} />} />
         <Stat
           etiqueta="Comisión del canal"
@@ -270,8 +281,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <tbody>
             {plan.exhibiciones.map((ex) => (
               <tr key={ex.id}>
-                <td className="text-muted">{ex.numero}</td>
-                <td>{ex.numero === 0 ? "Anticipo" : `Mensualidad ${ex.numero}`}</td>
+                <td className="text-muted">{ex.tipo === "MENSUALIDAD" || ex.tipo === "ANTICIPO" ? ex.numero : "—"}</td>
+                <td>{conceptoExhibicion(ex.numero, ex.tipo)}</td>
                 <td>{ex.fechaProgramada.toLocaleDateString("es-MX")}</td>
                 <td className="r">
                   <Money valor={Number(ex.monto)} />
@@ -315,6 +326,55 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </tbody>
         </table>
       </div>
+
+      {congelado && plan.estado === EstadoPlan.ACTIVO && (
+        <AccionesPlan planId={plan.id} saldo={Number(plan.saldo)} />
+      )}
+
+      {versiones.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div>
+            <p className="label">Versiones del plan</p>
+            <p className="mt-1.5 max-w-[70ch] text-[13px] text-ink-2">
+              Recalcular versiona, no sobrescribe (R4): cada versión guarda la foto de su calendario
+              al momento de crearse (el adelanto aparece por cobrar porque se cobra justo después). Lo
+              cobrado no cambia entre versiones (R3); el estado actual está en la tabla de arriba.
+            </p>
+          </div>
+          {versiones.map((v) => (
+            <details key={v.id} className="card p-5" open={v.version === plan.version}>
+              <summary className="cursor-pointer text-[14px]">
+                <b>Versión {v.version}</b>
+                {v.version === plan.version ? " · vigente" : ""} ·{" "}
+                <span className="text-ink-2">{v.motivo}</span>{" "}
+                <span className="text-muted">({v.createdAt.toLocaleDateString("es-MX")})</span>
+              </summary>
+              <table className="tbl mt-3">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Fecha</th>
+                    <th className="r">Monto</th>
+                    <th className="r">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {v.calendario.map((f, i) => (
+                    <tr key={i}>
+                      <td>{conceptoExhibicion(f.numero, f.tipo)}</td>
+                      <td>{new Date(f.fechaProgramada).toLocaleDateString("es-MX")}</td>
+                      <td className="r">
+                        <Money valor={Number(f.monto)} />
+                      </td>
+                      <td className="r text-muted">{f.estado === "PAGADA" ? "Pagada" : f.estado === "VENCIDA" ? "Vencida" : "Por cobrar"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          ))}
+        </section>
+      )}
 
       <EstadoFinancieroForm unidadId={unidad.id} estado={unidad.estadoFinanciero} />
 

@@ -3,6 +3,7 @@ import {
   EstadoFinanciero,
   EstadoPlan,
 } from "@prisma/client";
+import { conceptoExhibicion } from "@/lib/motor/recalculo";
 
 export function PageHead({
   eyebrow,
@@ -82,24 +83,26 @@ export function ChipEstadoPlan({ estado }: { estado: EstadoPlan }) {
 export function CintaExhibiciones({
   exhibiciones,
 }: {
-  exhibiciones: { numero: number; estado: EstadoExhibicion }[];
+  exhibiciones: { numero: number; estado: EstadoExhibicion; tipo?: string }[];
 }) {
   return (
     <div className="ribbon" aria-label="Avance del plan, exhibición por exhibición">
-      {exhibiciones.map((e) => {
+      {exhibiciones.map((e, i) => {
         const clase =
           e.estado === EstadoExhibicion.PAGADA
             ? "pagada"
             : e.estado === EstadoExhibicion.VENCIDA
               ? "vencida"
               : "";
+        const concepto = conceptoExhibicion(e.numero, e.tipo ?? (e.numero === 0 ? "ANTICIPO" : "MENSUALIDAD"));
+        const corto = e.tipo === "ADELANTO" ? "Adel." : e.tipo === "LIQUIDACION" ? "Liq." : e.numero === 0 ? "Anticipo" : e.numero;
         return (
           <div
-            key={e.numero}
-            className={`m ${clase} ${e.numero === 0 ? "anticipo" : ""}`}
-            title={`${e.numero === 0 ? "Anticipo" : `Mensualidad ${e.numero}`} · ${e.estado.toLowerCase()}`}
+            key={i}
+            className={`m ${clase} ${e.numero === 0 || (e.tipo && e.tipo !== "MENSUALIDAD") ? "anticipo" : ""}`}
+            title={`${concepto} · ${e.estado.toLowerCase()}`}
           >
-            {e.numero === 0 ? "Anticipo" : e.numero}
+            {corto}
           </div>
         );
       })}

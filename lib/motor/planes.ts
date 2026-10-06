@@ -7,6 +7,7 @@ import {
   OrigenRenglon,
   EstadoIntentoCobro,
   EstadoPago,
+  TipoExhibicion,
 } from "@prisma/client";
 import { prisma } from "../prisma";
 import { pasarela as pasarelaPorDefecto, type Pasarela, type SolicitudCobro } from "../pasarela";
@@ -137,6 +138,7 @@ async function crearPlan(tx: Tx, compradorId: string, p: PlanPreparado) {
       exhibiciones: {
         create: p.exhibiciones.map((e) => ({
           numero: e.numero,
+          tipo: e.numero === 0 ? TipoExhibicion.ANTICIPO : TipoExhibicion.MENSUALIDAD,
           monto: e.monto,
           fechaProgramada: fechaMasMeses(ahora, e.numero),
         })),
@@ -347,6 +349,7 @@ export async function cobrarExhibicion(
   if (exhibicion.estado === EstadoExhibicion.PAGADA) {
     throw new ReglaError("Esta exhibición ya está pagada.");
   }
+  asegurarViva(exhibicion);
 
   return ejecutarCobro({
     planId: plan.id,
@@ -360,7 +363,13 @@ export async function cobrarExhibicion(
 async function ejecutarCobro(p: {
   planId: string;
   compradorId: string;
-  exhibicion: { id: string; numero: number; monto: Prisma.Decimal; intentosRechazados: number };
+  exhibicion: {
+    id: string;
+    numero: number;
+    tipo: TipoExhibicion;
+    monto: Prisma.Decimal;
+    intentosRechazados: number;
+  };
   proyecto: { id: string; porcentajeComision: Prisma.Decimal };
   pasarela: Pasarela;
 }): Promise<ResultadoCobroMotor> {
@@ -368,7 +377,7 @@ async function ejecutarCobro(p: {
   // Sube sólo con un rechazo: dos envíos del mismo cobro comparten llave (D-13).
   const intento = exhibicion.intentosRechazados + 1;
   const { porcentaje, comision } = comisionDe(exhibicion.monto, p.proyecto.porcentajeComision);
-  const concepto = conceptoDe(exhibicion.numero);
+  const concepto = conceptoDe(exhibicion.numero, exhibicion.tipo);
 
   const solicitud: SolicitudCobro = {
     planId: p.planId,
@@ -491,7 +500,7 @@ export async function registrarCobroRechazado(params: {
         entidadTipo: "plan",
         entidadId: exhibicion.planId,
         tipo: "cobro_rechazado",
-        comentario: `El banco rechazó ${conceptoDe(exhibicion.numero)} por ${mx(new Decimal(exhibicion.monto).toNumber())} (intento ${params.intento}): ${params.codigo}, ${explicarRechazo(params.codigo)}. La exhibición sigue pendiente; el siguiente intento va con llave nueva.`,
+        comentario: `El banco rechazó ${conceptoDe(exhibicion.numero, exhibicion.tipo)} por ${mx(new Decimal(exhibicion.monto).toNumber())} (intento ${params.intento}): ${params.codigo}, ${explicarRechazo(params.codigo)}. La exhibición sigue pendiente; el siguiente intento va con llave nueva.`,
       },
     });
     return true;
@@ -520,6 +529,31 @@ async function aplicarPago(p: {
       if (exhibicion.pago) return await compararReferencia(tx, exhibicion.pago, p.referencia, exhibicion);
 
       const { plan } = exhibicion;
+      if (exhibicion.estado === EstadoExhibicion.REEMPLAZADA || exhibicion.estado === EstadoExhibicion.CANCELADA) {
+        // Una confirmación tardía de un cobro que ya se dio por rechazado y se
+        // revirtió. El dinero llegó: se registra (R3, D-19), pero no toca el
+        // saldo ni el calendario, que ya no la cuentan. Lo revisa una persona.
+        await tx.pago.create({
+          data: {
+            planId: plan.id,
+            exhibicionId: exhibicion.id,
+            monto: exhibicion.monto,
+            referenciaStripe: p.referencia,
+            porcentajeComision: p.porcentaje,
+            montoComision: p.comision,
+            estado: EstadoPago.AJUSTADO,
+          },
+        });
+        await tx.evento.create({
+          data: {
+            entidadTipo: "plan",
+            entidadId: plan.id,
+            tipo: "pago_a_exhibicion_retirada",
+            comentario: `ALERTA: llegó confirmado ${conceptoDe(exhibicion.numero, exhibicion.tipo)} por ${mx(new Decimal(exhibicion.monto).toNumber())} (referencia ${p.referencia}), pero esa exhibición ya se había retirado del calendario. El pago quedó registrado sin tocar el saldo: revisar en Stripe si se reembolsa o se vuelve a aplicar.`,
+          },
+        });
+        return "aplicado" as const;
+      }
       const monto = new Decimal(exhibicion.monto);
       const esAnticipo = exhibicion.numero === 0;
       const saldo = new Decimal(plan.saldo).sub(monto);
@@ -571,10 +605,12 @@ async function aplicarPago(p: {
         data: {
           entidadTipo: "plan",
           entidadId: plan.id,
-          tipo: esAnticipo ? "anticipo_cobrado" : "exhibicion_cobrada",
+          tipo: esAnticipo ? "anticipo_cobrado" : tipoEventoCobro(exhibicion.tipo),
           estadoAnterior: unidad.estadoFinanciero,
           estadoNuevo,
-          comentario: esAnticipo
+          comentario: exhibicion.tipo === TipoExhibicion.ADELANTO || exhibicion.tipo === TipoExhibicion.LIQUIDACION
+            ? `${capitalizar(conceptoDe(exhibicion.numero, exhibicion.tipo))} de ${mx(monto.toNumber())} cobrado (referencia ${p.referencia}). Saldo: ${mx((saldo.lt(0) ? new Decimal(0) : saldo).toNumber())}. Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`
+            : esAnticipo
             ? `Anticipo de ${mx(monto.toNumber())} cobrado (referencia ${p.referencia}). Precio congelado en ${mx(new Decimal(plan.montoCongelado).toNumber())} con sus ${plan.renglones.length} partidas: la lista ya no cambia (R2). Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`
             : `Exhibición ${exhibicion.numero} de ${mx(monto.toNumber())} cobrada (referencia ${p.referencia}). Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`,
         },
@@ -602,7 +638,7 @@ async function compararReferencia(
   db: Tx | typeof prisma,
   pago: { referenciaStripe: string | null },
   referencia: string,
-  exhibicion: { planId: string; numero: number }
+  exhibicion: { planId: string; numero: number; tipo: TipoExhibicion }
 ): Promise<ResultadoAplicacion> {
   if (pago.referenciaStripe === referencia) return "ya_aplicado";
   await db.evento.create({
@@ -610,7 +646,7 @@ async function compararReferencia(
       entidadTipo: "plan",
       entidadId: exhibicion.planId,
       tipo: "posible_doble_cargo",
-      comentario: `ALERTA: ${conceptoDe(exhibicion.numero)} ya estaba pagada con ${pago.referenciaStripe} y llegó otro cargo confirmado, ${referencia}. Puede ser un doble cargo: revisarlo en Stripe y reembolsar el que sobre.`,
+      comentario: `ALERTA: ${conceptoDe(exhibicion.numero, exhibicion.tipo)} ya estaba pagada con ${pago.referenciaStripe} y llegó otro cargo confirmado, ${referencia}. Puede ser un doble cargo: revisarlo en Stripe y reembolsar el que sobre.`,
     },
   });
   return "otro_cargo";
@@ -631,8 +667,25 @@ function aCentavos(monto: Prisma.Decimal): number {
   return centavos.toNumber();
 }
 
-function conceptoDe(numero: number) {
+function tipoEventoCobro(tipo: TipoExhibicion) {
+  if (tipo === TipoExhibicion.ADELANTO) return "adelanto_cobrado";
+  if (tipo === TipoExhibicion.LIQUIDACION) return "liquidacion_cobrada";
+  return "exhibicion_cobrada";
+}
+
+function conceptoDe(numero: number, tipo: TipoExhibicion = TipoExhibicion.MENSUALIDAD) {
+  if (tipo === TipoExhibicion.ADELANTO) return "el adelanto";
+  if (tipo === TipoExhibicion.LIQUIDACION) return "la liquidación anticipada";
   return numero === 0 ? "el anticipo" : `la mensualidad ${numero}`;
+}
+
+/** Sólo se cobra lo vivo: lo reemplazado o cancelado por un recálculo es historia (R4). */
+function asegurarViva(exhibicion: { estado: EstadoExhibicion }) {
+  if (exhibicion.estado === EstadoExhibicion.REEMPLAZADA || exhibicion.estado === EstadoExhibicion.CANCELADA) {
+    throw new ReglaError(
+      "Esta exhibición ya no está vigente: un recálculo del plan la sustituyó. Cobra la que aparece en el calendario actual."
+    );
+  }
 }
 
 function capitalizar(texto: string) {
@@ -847,6 +900,7 @@ export async function prepararIntentoCobro(exhibicionId: string) {
   if (exhibicion.estado === EstadoExhibicion.PAGADA) {
     throw new ReglaError("Esta exhibición ya está pagada.");
   }
+  asegurarViva(exhibicion);
 
   const porcentajeComision = new Decimal(unidad.proyecto.porcentajeComision);
   const monto = new Decimal(exhibicion.monto);

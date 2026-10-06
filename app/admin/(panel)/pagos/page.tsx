@@ -1,3 +1,4 @@
+import { conceptoExhibicion } from "@/lib/motor/recalculo";
 import Link from "next/link";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
 import { connection } from "next/server";
@@ -79,7 +80,7 @@ export default async function PagosPage({
       folio: p.plan.comprador.folio,
       unidad: `${u.torre} ${u.numero}`,
       concepto:
-        p.exhibicion.numero === 0 ? "Anticipo" : `Mensualidad ${p.exhibicion.numero} de 12`,
+        conceptoExhibicion(p.exhibicion.numero, p.exhibicion.tipo),
       monto: Number(p.monto),
       comision: Number(p.montoComision),
       metodo: "tarjeta",
@@ -277,7 +278,7 @@ export default async function PagosPage({
                         {ex.plan.comprador.nombre}
                       </Link>
                       <span className="block text-[12px] text-muted">
-                        Mensualidad {ex.numero} de 12 · fuera de sesión
+                        {conceptoExhibicion(ex.numero, ex.tipo)} · fuera de sesión
                       </span>
                     </div>
                     <p className="figure text-[17px]">
