@@ -28,7 +28,7 @@ la otra) · **Sustituida**.
 
 ## D-02 · Dónde vive la tarjeta: variante provisional
 
-- **Fecha / quién:** 27 sep · Ethan (Claude) · **Provisional** hasta que Ana Cris / abogado decidan (esperado lun 28)
+- **Fecha / quién:** 27 sep · Ethan (Claude) · **Sustituida por D-32** (5 oct)
 - **Decisión:** mientras no haya respuesta se usa el **plan B de la sección 09
   del plan del sprint**: la tarjeta se guarda en la cuenta de la **plataforma**
   (SetupIntent con `usage: "off_session"`) y al cobrar se **clona** el método
@@ -363,3 +363,39 @@ la otra) · **Sustituida**.
   `confirmarCobroStripe`, también para un pago AJUSTADO. Uno por pago.
 - **Por qué:** R8, «todo cobro nace sin comprobante»: si se creara después,
   una caída en medio dejaría un cobro sin pendiente y nadie lo vería.
+
+## D-32 · La tarjeta vive en la plataforma y se clona a Moretti en cada cobro
+
+- **Fecha / quién:** 5 oct · Ethan (decidido con Claude) · **Vigente** en lo
+  técnico; la pregunta legal queda abierta (I-9). Sustituye a D-02.
+- **Decisión:** el `Customer` y el método de pago del comprador se guardan
+  en la cuenta de la **plataforma** (día uno), con un SetupIntent
+  `usage: "off_session"` y 3-D Secure al guardarla. En cada cobro se
+  **clona** el método de pago hacia la cuenta conectada de Moretti del
+  proyecto y se hace el cargo directo con la comisión del canal.
+- **Por qué:**
+  - En los dos lugares los datos de la tarjeta viven en Stripe (PCI DSS
+    nivel 1); el sistema sólo guarda `cus_…` y `pm_…`. La diferencia está
+    en **quién puede cobrarle**: en la plataforma, sólo el sistema, con sus
+    reglas, su llave de idempotencia y su bitácora. En la cuenta de
+    Moretti, cualquiera con acceso a su panel podría hacer un cargo fuera
+    del plan.
+  - Si se compromete o se cierra la cuenta de Moretti, las tarjetas no
+    están ahí: cada cobro usa una copia hecha para ese cargo.
+  - Un solo lugar para retirar una tarjeta, atender el aviso de tarjeta
+    por vencer y `payment_method.automatically_updated` (P), y para más
+    desarrolladores después.
+  - Stripe clona de la plataforma hacia la cuenta conectada, no al revés:
+    empezar en la plataforma deja abierta la otra opción.
+- **Lo que no cambia:** con cargo directo, Moretti es el comercio que
+  cobra: aparece en el estado de cuenta y le llegan las disputas. El texto
+  de consentimiento al guardar la tarjeta nombra a día uno y a Moretti y
+  dice que se usará para cobrar las mensualidades sin el comprador presente.
+- **Prácticas que acompañan la decisión:** sólo el Payment Element de
+  Stripe; llaves en `.env`, una llave restringida en producción; firma de
+  cada webhook verificada y eventos deduplicados (`EventoStripe`); llave de
+  idempotencia con número de intento (M); panel de Stripe de Moretti con
+  pocas personas, doble factor y roles.
+- **Qué la cambiaría:** que el abogado diga que el comercio que cobra debe
+  ser la plataforma (cargo de destino en lugar de cargo directo). La tarjeta
+  seguiría en la plataforma; cambiaría la forma del cargo.

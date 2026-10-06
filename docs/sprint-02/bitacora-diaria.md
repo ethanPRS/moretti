@@ -76,3 +76,10 @@ hizo.
 9. **Cierre del día:** `npm test` 159/159, `tsc` y `eslint` limpios, `next
    build` compila. Documentación al día. Rama empujada a GitHub para la
    revisión de Charly.
+10. **Dónde vive la tarjeta (H, abierta desde el Sprint 0): decidido.** En
+    la plataforma, clonada a la cuenta de Moretti en cada cobro (D-32, sustituye
+    a la provisional D-02). En seguridad de los datos las dos opciones son
+    iguales (Stripe, PCI); se eligió por control: sólo el sistema puede
+    cobrarle a la tarjeta, y una cuenta de Moretti comprometida no las expone.
+    Queda abierta sólo la pregunta legal de quién es el comercio que cobra
+    (I-9). Con esto Charly ya puede avanzar con K y O.
