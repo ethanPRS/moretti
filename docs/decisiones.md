@@ -253,3 +253,113 @@ la otra) · **Sustituida**.
 - **Por qué:** los precios de lista se redondean a la centena (spec §4) y el
   cotizador calcula en enteros para dar exactamente lo mismo que el motor.
   Mejor rechazar en la captura que redondear en silencio.
+
+---
+
+> Las decisiones D-22 a D-31 las tomó Claude el 5 de octubre trabajando a
+> nombre de Ethan en el Sprint 2 (Q, R y S), con la instrucción de avanzar
+> sus tareas hasta terminarlas. Quedan **por ratificar por Ethan**; las que
+> tocan código de Charly, también por él.
+
+## D-22 · Las máquinas operativa e instalación sólo avanzan, de un paso en uno
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar** (Q)
+- **Decisión:** no hay retroceso ni saltos. Requisitos además de los de la
+  spec: el levantamiento requiere la unidad apartada; ACABADOS_ELEGIDOS
+  requiere un acabado en cada partida que lo ofrece; PROGRAMADA requiere la
+  pieza PRODUCIDA o EN_ALMACEN.
+- **Por qué:** la spec da las reglas cruzadas pero no el orden. Sin estos
+  requisitos se podría programar la instalación de algo que no existe, o
+  confirmar acabados con partidas sin elegir. El acabado se elige antes del
+  levantamiento (S1-05) y queda fijo después (R6), así que
+  ACABADOS_ELEGIDOS es la confirmación de lo elegido, no la elección.
+- **Qué la cambiaría:** que operación de Moretti necesite corregir un paso
+  marcado por error. Hoy se corrige en la base; un «deshacer» con motivo y
+  evento sería una historia aparte.
+
+## D-23 · Con el financiero suspendido o cancelado, tampoco avanza la instalación
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar** (Q)
+- **Decisión:** el candado de SUSPENDIDO se aplica a las dos máquinas, no
+  sólo a la operativa.
+- **Por qué:** la spec lo dice de la operativa; instalar en una unidad que
+  dejó de pagar es el mismo riesgo.
+
+## D-24 · El estado financiero por pago pasa por la máquina en los dos caminos
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar con Charly** (Q)
+- **Decisión:** `confirmarCobroStripe` (webhook) ya no escribe el estado
+  directo: usa el mismo `moverEstadoPorPago` que la pasarela. Si llega un
+  anticipo sin contrato, el pago queda (D-19) pero la unidad no se aparta y
+  queda una alerta. Tampoco reabre un plan cancelado.
+- **Por qué:** «APARTADO requiere contrato Y anticipo» tiene que valer por
+  cualquier camino; el del webhook se lo saltaba y no dejaba evento por paso.
+
+## D-25 · El versionado guarda la foto del calendario y marca, no borra
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar** (R)
+- **Decisión:** cada exhibición lleva `version` y `tipo`. Un recálculo marca
+  lo sustituido como REEMPLAZADA (CANCELADA en la liquidación), crea las
+  nuevas con la versión siguiente y guarda en `VersionPlan` la foto completa
+  del calendario con su motivo. Las cobradas no cambian de versión.
+- **Por qué:** «la versión anterior sigue consultable» sin reconstruirla con
+  consultas; y R3 (lo cobrado no se edita) se cumple sin copiar pagos.
+- **Qué la cambiaría:** volumen. Una foto JSON por versión es poco para 63
+  planes.
+
+## D-26 · El adelanto toma el lugar de la primera exhibición que cubre
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Vigente** (R)
+- **Decisión:** el adelanto es una exhibición nueva (tipo ADELANTO) con el
+  número de la primera que paga, fechada hoy, y se cobra por el camino
+  normal (llave, comisión, bitácora, comprobante fiscal). El índice único es
+  `(plan, versión, tipo, número)`.
+- **Por qué:** un `Pago` es de una exhibición; un solo cargo por el adelanto
+  es más claro para el comprador y para Stripe que N cargos.
+
+## D-27 · Si el sobrante cubre la última, pasa a la penúltima
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar** (R)
+- **Decisión:** «el sobrante menor a una exhibición se abona a la última»; si
+  la última es más chica que el sobrante (absorbe el redondeo), se cubre
+  completa y el resto se abona a la anterior.
+- **Por qué:** la regla no dice qué hacer en ese caso y una exhibición en
+  negativo rompe R7.
+
+## D-28 · Un adelanto o liquidación rechazado se revierte con otra versión
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar** (R)
+- **Decisión:** si el banco rechaza el cargo, se crea la versión siguiente
+  que restituye el calendario anterior; la rechazada queda como historia.
+  Si la pasarela no contesta (no se sabe si cobró), NO se revierte: el
+  adelanto queda pendiente y se reintenta con la misma llave.
+- **Por qué:** el comprador no debe un adelanto que no pagó; dejarlo
+  pendiente lo marcaría atrasado. Revertir sin saber si cobró sería peor.
+- **Riesgo aceptado:** una confirmación tardía de un cargo ya revertido se
+  registra como `Pago` AJUSTADO sin tocar el saldo, con alerta para revisión.
+
+## D-29 · Adelanto y liquidación sólo desde el back office
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Vigente** (R)
+- **Decisión:** no hay botón en el sitio del comprador. La liquidación no se
+  promociona (lo pide la tarea R) y el adelanto lo opera Moretti a petición.
+- **Qué la cambiaría:** el portal del comprador (fuera de alcance).
+
+## D-30 · Fecha límite fiscal en días de México y feriados de la LFT
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Provisional** hasta que lo
+  confirme el contador de Moretti (S)
+- **Decisión:** el mes del cobro se cuenta en `America/Mexico_City`; «hábil»
+  excluye sábados, domingos y los descansos de la LFT art. 74. Los feriados
+  extra del SAT (Jueves y Viernes Santo, por ejemplo) se agregan en
+  `FERIADOS_FISCALES`. La fecha se guarda a mediodía UTC.
+- **Por qué:** un cobro del 31 a las 11 p. m. es de ese mes para el comprador
+  y el SAT; en UTC ya sería del siguiente.
+
+## D-31 · El pendiente fiscal nace en la misma transacción que el pago
+
+- **Fecha / quién:** 5 oct · Ethan (Claude) · **Por ratificar con Charly** (S)
+- **Decisión:** `crearPendienteFiscal` se llama dentro de `aplicarPago` y de
+  `confirmarCobroStripe`, también para un pago AJUSTADO. Uno por pago.
+- **Por qué:** R8, «todo cobro nace sin comprobante»: si se creara después,
+  una caída en medio dejaría un cobro sin pendiente y nadie lo vería.

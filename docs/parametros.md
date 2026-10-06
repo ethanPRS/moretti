@@ -18,6 +18,14 @@ lo decide y cómo se cambia. Actualizado el 27 de septiembre de 2026.
 | Opciones de acabado por partida | Maqueta 5b, de ejemplo | `Partida.acabados` | Moretti | Base de datos. Los colores son de ejemplo. |
 | Dónde se guardan las fotos | `almacen/` en disco | `ALMACEN_LOCAL_DIR` (variable de entorno) + `lib/almacenamiento/index.ts` | Ethan, antes de producción (D-12) | Otra implementación de `Almacenamiento`. |
 
+## Sprint 2 (5 oct)
+
+| Parámetro | Valor hoy | Dónde vive | Quién lo decide | Cómo se cambia |
+|---|---|---|---|---|
+| Días con que un comprobante se marca «por vencer» | 3 | `DIAS_ALERTA_FISCAL` en `lib/motor/fiscal.ts` | Contador de Moretti (provisional, D-30) | Código, hasta que alguien lo confirme; si cambia seguido, pasa a `Proyecto`. |
+| Feriados fiscales extra (además de la LFT) | ninguno | `FERIADOS_FISCALES="2027-03-25,2027-03-26"` (variable de entorno) | Contador / SAT | `.env`. |
+| Día límite del comprobante | día 5 del mes siguiente | `fechaLimiteComprobante` | Regla fiscal (R8) | Código; no es comercial. |
+
 ## Parámetros de Charly (pasarela) — por definir en su código
 
 | Parámetro | Propuesta | Historia |

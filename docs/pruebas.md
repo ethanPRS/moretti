@@ -69,3 +69,14 @@ la pasarela falsa:
 | Fondos insuficientes (9995) / rechazo genérico (0002) | Exhibición pendiente, rechazo en la bitácora, siguiente intento con llave nueva. |
 | El mismo intento tres veces deja un cargo | Tres envíos simultáneos → un cargo en la pasarela y un pago en la base. |
 | Un webhook reenviado no duplica nada | `aplicarCobroConfirmado` dos veces → aplica una. |
+
+## Sprint 2 (5 oct): 54 pruebas nuevas, 159 en total
+
+| Archivo | Tipo | Qué sostiene |
+|---|---|---|
+| `lib/motor/operacion.test.ts` | unitarias (14) | Q: cada regla cruzada y que el mensaje nombre lo que falta. |
+| `lib/motor/obra.int.test.ts` | integración (10) | Q: APARTADO requiere contrato y anticipo (también por el webhook); suspendida no avanza ni retrocede; de punta a punta hasta ENTREGADA con acta. |
+| `lib/motor/recalculo.test.ts` | unitarias (10) | R: adelanto (siguientes completas, sobrante a la última, a la penúltima si la cubre), liquidación, R7 al centavo para cientos de montos. |
+| `lib/motor/versiones.int.test.ts` | integración (8) | R: vista previa sin cambios, versión 2 consultable con la 1, R3, no se cobra lo reemplazado, rechazo que restituye, liquidación sin descuento. |
+| `lib/motor/fiscal.test.ts` | unitarias (9) | S: día 5 recorrido por fin de semana y feriado (fechas reales de 2026–2029), mes en hora de México, urgencia. |
+| `lib/motor/comprobantes.int.test.ts` | integración (3) | S: un pendiente por pago por los dos caminos, webhook doble sin duplicar, cierre con folio. |

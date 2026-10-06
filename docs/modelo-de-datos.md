@@ -123,3 +123,24 @@ la unidad (`entidadTipo = "unidad"`). El estado de cuenta muestra los dos.
 | `plan_cancelado` | S1-13: se canceló la unidad y con ella el plan abierto. |
 | `estado_financiero_cambiado` *(unidad)* | S1-13: cada transición del estado financiero, a mano o por un cobro, con el anterior, el nuevo y el motivo. |
 | `estado_financiero_inesperado` *(unidad)* | S1-13: llegó un pago con la unidad en un estado desde el que no hay camino (cancelada). El pago se registra; el estado no se mueve. |
+
+---
+
+## Sprint 2 (5 oct): tablas nuevas o que cambiaron
+
+| Tabla | Cambio | Para qué |
+|---|---|---|
+| `ActaEntrega` | nueva, una por unidad | requisito para ENTREGADA (Q) |
+| `Exhibicion` | `tipo` (ANTICIPO, MENSUALIDAD, ADELANTO, LIQUIDACION) y `version`; estados nuevos REEMPLAZADA y CANCELADA; índice único `(planId, version, tipo, numero)` | versionado del plan (R) |
+| `VersionPlan` | nueva: foto del calendario de cada versión con motivo, saldo y usuario | consultar versiones anteriores (R4) |
+| `ComprobanteFiscal` | nueva, una por `Pago`: estado, fecha de cobro, fecha límite, folio fiscal | pendiente fiscal (S, R8) |
+
+Migraciones: `20261006005520_acta_entrega`, `20261006020000_versionado_plan`
+(marca la exhibición 0 de los planes existentes como ANTICIPO),
+`20261006040000_comprobante_fiscal`. Los pagos anteriores a esta última no
+tienen pendiente fiscal (en desarrollo sólo hay datos de prueba).
+
+Eventos nuevos en la bitácora: `estado_operativo_cambiado`,
+`estado_instalacion_cambiado`, `acta_entrega_registrada`,
+`plan_recalculado`, `adelanto_cobrado`, `liquidacion_cobrada`,
+`pago_a_exhibicion_retirada`, `comprobante_pendiente`, `comprobante_emitido`.

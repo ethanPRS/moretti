@@ -138,3 +138,34 @@ del plan.
   con el anterior, el nuevo y el motivo.
 - Cancelar exige motivo y cancela el plan abierto: ya no se le cobra.
 - Un pago ya cobrado nunca se rechaza por el estado (D-19).
+
+## Reglas cruzadas de las tres máquinas (Sprint 2, actividad Q)
+
+`lib/motor/operacion.ts`. Cada error nombra todo lo que falta.
+
+| Para pasar a… | Hace falta |
+|---|---|
+| Apartado (financiero) | contrato firmado **y** anticipo cobrado, por cualquier camino de cobro |
+| Levantamiento hecho | la unidad apartada (Apartado, Al corriente o Liquidado) |
+| Acabados elegidos | levantamiento hecho y un acabado en cada partida que lo ofrece |
+| En producción | financiero **Liquidado** y Acabados elegidos |
+| Programada (instalación) | la pieza Producida o En almacén |
+| Entregada | instalada y el acta de entrega firmada en el expediente |
+
+- Las dos máquinas avanzan de un paso en uno y no retroceden.
+- Con el financiero **Suspendido** o **Cancelado** ninguna avanza, pero
+  tampoco retrocede: al reactivarse sigue donde iba.
+- R6: con el levantamiento hecho se bloquean upgrade, downgrade y cambio de
+  acabados (`bloqueoPorLevantamiento`).
+
+## Adelanto y liquidación (Sprint 2, actividad R)
+
+Ver `docs/versionado-del-plan.md`.
+
+## Comprobante fiscal (Sprint 2, actividad S, R8)
+
+Cada pago nace con un comprobante PENDIENTE. Fecha límite: día 5 del mes
+siguiente al cobro (en hora de México), recorrida al siguiente hábil si cae
+en fin de semana o feriado (LFT art. 74 más `FERIADOS_FISCALES`). Se marca
+«por vencer» a 3 días o menos y «vencido» al pasar. Se cierra con el folio
+fiscal (UUID del CFDI).
