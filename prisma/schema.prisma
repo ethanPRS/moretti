@@ -173,6 +173,7 @@ model Unidad {
   estadoInstalacion EstadoInstalacion @default(NO_PROGRAMADA)
   comprador         Comprador?
   contrato          Contrato?
+  actaEntrega       ActaEntrega?
   createdAt         DateTime          @default(now())
 
   @@unique([proyectoId, torre, numero])
@@ -180,6 +181,17 @@ model Unidad {
 
 /// R1: sin contrato firmado no se cobra.
 model Contrato {
+  id            String   @id @default(cuid())
+  unidad        Unidad   @relation(fields: [unidadId], references: [id])
+  unidadId      String   @unique
+  archivoNombre String
+  fechaFirma    DateTime
+  quienFirmo    String
+  createdAt     DateTime @default(now())
+}
+
+/// Sin acta firmada no se marca ENTREGADA (spec §7, actividad Q).
+model ActaEntrega {
   id            String   @id @default(cuid())
   unidad        Unidad   @relation(fields: [unidadId], references: [id])
   unidadId      String   @unique

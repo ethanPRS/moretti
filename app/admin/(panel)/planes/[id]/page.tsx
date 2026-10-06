@@ -15,6 +15,7 @@ import CobrarConStripe from "@/components/pagos/CobrarConStripe";
 import ContratoForm from "./ContratoForm";
 import AcabadoYFotos from "./AcabadoYFotos";
 import EstadoFinancieroForm from "./EstadoFinancieroForm";
+import ObraYEntrega from "./ObraYEntrega";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -26,7 +27,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     include: {
       comprador: {
         include: {
-          unidad: { include: { proyecto: true, prototipo: true, contrato: true } },
+          unidad: { include: { proyecto: true, prototipo: true, contrato: true, actaEntrega: true } },
         },
       },
       paquete: true,
@@ -316,6 +317,27 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <EstadoFinancieroForm unidadId={unidad.id} estado={unidad.estadoFinanciero} />
+
+      {plan.estado !== EstadoPlan.CANCELADO && (
+        <ObraYEntrega
+          unidadId={unidad.id}
+          financiero={unidad.estadoFinanciero}
+          operativo={unidad.estadoOperativo}
+          instalacion={unidad.estadoInstalacion}
+          partidasSinAcabado={renglones
+            .filter((r) => Array.isArray(r.partida.acabados) && r.partida.acabados.length > 0 && !r.acabado)
+            .map((r) => r.partida.nombre)}
+          acta={
+            unidad.actaEntrega
+              ? {
+                  quienFirmo: unidad.actaEntrega.quienFirmo,
+                  fecha: unidad.actaEntrega.fechaFirma.toLocaleDateString("es-MX"),
+                  archivo: unidad.actaEntrega.archivoNombre,
+                }
+              : null
+          }
+        />
+      )}
 
       <div className="flex flex-col gap-3">
         <p className="label">Bitácora</p>

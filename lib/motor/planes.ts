@@ -512,7 +512,9 @@ async function aplicarPago(p: {
         where: { id: p.exhibicionId },
         include: {
           pago: true,
-          plan: { include: { comprador: { include: { unidad: true } }, renglones: true } },
+          plan: {
+            include: { comprador: { include: { unidad: { include: { contrato: true } } } }, renglones: true },
+          },
         },
       });
       if (exhibicion.pago) return await compararReferencia(tx, exhibicion.pago, p.referencia, exhibicion);
@@ -557,15 +559,10 @@ async function aplicarPago(p: {
       });
 
       const unidad = plan.comprador.unidad;
-      const estadoNuevo = esAnticipo
-        ? EstadoFinanciero.APARTADO
-        : liquidado
-          ? EstadoFinanciero.LIQUIDADO
-          : EstadoFinanciero.AL_CORRIENTE;
-      await seguirCaminoFinanciero(tx, {
-        unidadId: unidad.id,
-        desde: unidad.estadoFinanciero,
-        hacia: estadoNuevo,
+      const estadoNuevo = await moverEstadoPorPago(tx, {
+        unidad,
+        esAnticipo,
+        liquidado,
         motivo: esAnticipo ? "se cobró el anticipo" : `se cobró la exhibición ${exhibicion.numero}`,
       });
 
@@ -730,6 +727,49 @@ export async function cambiarEstadoFinanciero(params: {
 }
 
 /**
+ * A qué estado financiero lleva un pago aplicado, y lo aplica. Regla cruzada
+ * (actividad Q): APARTADO requiere contrato firmado Y anticipo cobrado. Si
+ * llega un anticipo cobrado sin contrato (no debería: el motor no cobra sin
+ * él, R1), el pago queda registrado (D-19) pero la unidad no se aparta y
+ * queda una alerta que dice qué falta.
+ */
+async function moverEstadoPorPago(
+  tx: Tx,
+  p: {
+    unidad: { id: string; estadoFinanciero: EstadoFinanciero; contrato: unknown };
+    esAnticipo: boolean;
+    liquidado: boolean;
+    motivo: string;
+  }
+): Promise<EstadoFinanciero> {
+  const hacia = p.esAnticipo
+    ? EstadoFinanciero.APARTADO
+    : p.liquidado
+      ? EstadoFinanciero.LIQUIDADO
+      : EstadoFinanciero.AL_CORRIENTE;
+  if (p.esAnticipo && !p.unidad.contrato) {
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: p.unidad.id,
+        tipo: "estado_financiero_inesperado",
+        estadoAnterior: p.unidad.estadoFinanciero,
+        estadoNuevo: hacia,
+        comentario: `ALERTA: ${p.motivo}, pero la unidad no se aparta: falta el contrato firmado (Apartado requiere contrato y anticipo). El pago quedó registrado; registra el contrato y revisa con sistemas.`,
+      },
+    });
+    return p.unidad.estadoFinanciero;
+  }
+  await seguirCaminoFinanciero(tx, {
+    unidadId: p.unidad.id,
+    desde: p.unidad.estadoFinanciero,
+    hacia,
+    motivo: p.motivo,
+  });
+  return hacia;
+}
+
+/**
  * Las transiciones que provoca un pago. Un pago ya cobrado nunca se rechaza
  * por el estado: se sigue el camino permitido (SUSPENDIDO → AL_CORRIENTE →
  * LIQUIDADO si una unidad suspendida paga la última) con un evento por paso;
@@ -869,7 +909,7 @@ export async function confirmarCobroStripe(params: {
 
     const plan = await tx.plan.findUnique({
       where: { id: locked.planId },
-      include: { comprador: { include: { unidad: true } } },
+      include: { comprador: { include: { unidad: { include: { contrato: true } } } } },
     });
     if (!plan) throw new ReglaError("No se encontró el plan del intento de cobro.");
 
@@ -898,20 +938,21 @@ export async function confirmarCobroStripe(params: {
     await tx.plan.update({
       where: { id: locked.planId },
       data: {
-        estado: esAnticipo ? EstadoPlan.ACTIVO : liquidado ? EstadoPlan.LIQUIDADO : EstadoPlan.ACTIVO,
+        // Un pago tardío no reabre un plan cancelado (igual que aplicarPago).
+        ...(plan.estado === EstadoPlan.CANCELADO
+          ? {}
+          : { estado: !esAnticipo && liquidado ? EstadoPlan.LIQUIDADO : EstadoPlan.ACTIVO }),
         fechaCongelamiento: esAnticipo ? new Date() : undefined,
         saldo: nuevoSaldo.lt(0) ? 0 : nuevoSaldo,
       },
     });
-    await tx.unidad.update({
-      where: { id: plan.comprador.unidad.id },
-      data: {
-        estadoFinanciero: esAnticipo
-          ? EstadoFinanciero.APARTADO
-          : liquidado
-            ? EstadoFinanciero.LIQUIDADO
-            : EstadoFinanciero.AL_CORRIENTE,
-      },
+    // Por la máquina, no directo: así respeta las reglas cruzadas y deja un
+    // evento por paso, igual que el camino de la pasarela (actividad Q).
+    const estadoNuevo = await moverEstadoPorPago(tx, {
+      unidad: plan.comprador.unidad,
+      esAnticipo,
+      liquidado,
+      motivo: esAnticipo ? "Stripe confirmó el anticipo" : `Stripe confirmó la exhibición ${locked.exhibicion.numero}`,
     });
     await tx.intentoCobro.update({
       where: { id: locked.id },
@@ -922,11 +963,7 @@ export async function confirmarCobroStripe(params: {
         entidadTipo: "plan",
         entidadId: plan.id,
         tipo: esAnticipo ? "anticipo_cobrado" : "exhibicion_cobrada",
-        estadoNuevo: esAnticipo
-          ? EstadoFinanciero.APARTADO
-          : liquidado
-            ? EstadoFinanciero.LIQUIDADO
-            : EstadoFinanciero.AL_CORRIENTE,
+        estadoNuevo,
         comentario: `Stripe confirmó ${esAnticipo ? "el anticipo" : `la exhibición ${locked.exhibicion.numero}`} por $${new Decimal(locked.monto).toFixed(2)}.`,
       },
     });
