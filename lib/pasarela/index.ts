@@ -18,5 +18,7 @@ export type {
   ResultadoCobro,
   SolicitudTarjeta,
   PreparacionTarjeta,
+  SolicitudTransferencia,
+  ResultadoTransferencia,
 } from "./contrato";
 export { llaveIdempotencia } from "./contrato";

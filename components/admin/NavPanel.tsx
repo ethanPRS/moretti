@@ -9,6 +9,7 @@ const ICONOS = {
   cartera: "M4 6.5h16v12H4zM4 10h16M8 14.5h3",
   pagos: "M3.5 7h17v10h-17zM3.5 10.5h17M7 14h4",
   cobranza: "M4 19.5h16M6.5 16V11M11 16V7M15.5 16v-6M20 16V4.5",
+  moretti: "M4 12h13M13 7.5l4.5 4.5-4.5 4.5M4 5v14",
   fiscal: "M6.5 3.5h8l3 3v14h-11zM14.5 3.5v3h3M9 11h6M9 14.5h6M9 18h3",
   proyectos: "M4.5 20V6.5L12 3l7.5 3.5V20M9 20v-5h6v5M9 9.5h.01M15 9.5h.01",
   paquetes: "M4 8l8-4 8 4-8 4-8-4zM4 8v8l8 4 8-4V8M12 12v8",
@@ -20,6 +21,7 @@ const ENLACES: { href: string; texto: string; icono: keyof typeof ICONOS; exacto
   { href: "/admin/catalogo", texto: "Paquetes", icono: "paquetes" },
   { href: "/admin/cobranza", texto: "Cobranza", icono: "cobranza" },
   { href: "/admin/pagos", texto: "Pagos", icono: "pagos" },
+  { href: "/admin/transferencias", texto: "Pagos a Moretti", icono: "moretti" },
   { href: "/admin/fiscal", texto: "Fiscal", icono: "fiscal" },
 ];
 

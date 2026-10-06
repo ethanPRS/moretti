@@ -395,7 +395,42 @@ model Pago {
   porcentajeComision    Decimal    @db.Decimal(5, 4)
   montoComision         Decimal    @db.Decimal(12, 2)
   comprobante           ComprobanteFiscal?
+  /// D-34: null mientras la plataforma retiene el dinero; la transferencia
+  /// que se lo pagó a Moretti, después.
+  transferencia         TransferenciaMoretti? @relation(fields: [transferenciaId], references: [id])
+  transferenciaId       String?
   createdAt             DateTime   @default(now())
+
+  @@index([transferenciaId])
+}
+
+enum EstadoTransferencia {
+  /// Se reservaron los pagos y se está llamando a la pasarela.
+  EN_PROCESO
+  ENVIADA
+  /// La pasarela la rechazó: los pagos vuelven a quedar retenidos.
+  FALLIDA
+}
+
+/// D-34: la plataforma retiene lo cobrado y Ana Cris autoriza pagarle a
+/// Moretti. Una transferencia cubre varios pagos de un proyecto; el monto es
+/// lo cobrado menos la comisión del canal que se queda la plataforma.
+model TransferenciaMoretti {
+  id            String              @id @default(cuid())
+  proyectoId    String
+  bruto         Decimal             @db.Decimal(12, 2)
+  comision      Decimal             @db.Decimal(12, 2)
+  /// bruto − comisión: lo que recibe Moretti.
+  neto          Decimal             @db.Decimal(12, 2)
+  estado        EstadoTransferencia @default(EN_PROCESO)
+  /// Nombre de quien autorizó (hoy el back office tiene un solo usuario).
+  autorizadaPor String
+  referencia    String?
+  error         String?
+  pagos         Pago[]
+  createdAt     DateTime            @default(now())
+
+  @@index([proyectoId, estado])
 }
 
 enum EstadoComprobante {

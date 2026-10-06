@@ -242,6 +242,9 @@ describe("S1-08 · el motor cobra a través de la pasarela", () => {
       async prepararTarjeta() {
         return { clientSecret: "x" };
       },
+      async transferir() {
+        return { estado: "fallido", mensaje: "no se usa en esta prueba" };
+      },
     };
 
     await expect(cobrarAnticipo(plan.id, { pasarela })).rejects.toThrow(PasarelaError);

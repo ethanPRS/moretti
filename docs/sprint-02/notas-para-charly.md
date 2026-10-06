@@ -75,3 +75,23 @@ Para probarlo en el panel de Stripe (modo prueba): el cargo aparece en la
 plataforma, con una **transferencia** a la cuenta de Moretti y la
 **comisión de la aplicación** separada. Esa es la comprobación 2 del
 objetivo del Sprint 1.
+
+## 7. Actualización: la plataforma RETIENE el dinero (D-34) — sustituye al §6
+
+Ana Cris respondió I-10: **la plataforma guarda el dinero hasta que ella
+decide pagarle a Moretti.** El cargo de destino del §6 transfiere en el acto,
+así que ya no aplica. Queda **cargos y transferencias separados**:
+
+| Dónde | Qué va |
+|---|---|
+| `create-payment-intent` y `pasarelaStripe.cobrar` | PaymentIntent **en la plataforma**, sin `stripeAccount`, **sin `transfer_data` y sin `application_fee_amount`**. Todo queda en el saldo de la plataforma. `transfer_group: "proyecto_<id>"` para ligarlo después. |
+| `CobrarConStripe.tsx` | `loadStripe(PUBLIC_KEY)` sin `stripeAccount`. |
+| Webhook | Eventos de la cuenta de la plataforma (sin `event.account`). Agregar `transfer.created`, `transfer.reversed`. |
+| `pasarelaStripe.transferir` (nuevo en el contrato) | `stripe.transfers.create({ amount: montoCentavos, currency: "mxn", destination: <acct del proyecto>, transfer_group }, { idempotencyKey: "transferencia_" + transferenciaId })`. El monto ya viene **neto** (cobrado − comisión). |
+
+Lo de Ethan ya está en `ethan/sprint-3`: el registro de lo retenido
+(`Pago.transferenciaId`), el modelo `TransferenciaMoretti`, el motor
+(`lib/motor/transferencias.ts`: reserva los pagos, llama a `transferir`, si
+falla los libera, si no contesta reintenta con la misma llave) y la pantalla
+«Pagos a Moretti» donde Ana Cris autoriza. Con la pasarela falsa funciona de
+punta a punta; falta tu `transferir` real.

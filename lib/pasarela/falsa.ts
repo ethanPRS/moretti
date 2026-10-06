@@ -5,6 +5,8 @@ import {
   type ResultadoCobro,
   type SolicitudCobro,
   type SolicitudTarjeta,
+  type SolicitudTransferencia,
+  type ResultadoTransferencia,
 } from "./contrato";
 
 /**
@@ -25,7 +27,9 @@ export type PasarelaFalsa = Pasarela & {
 
 export function crearPasarelaFalsa(opciones?: {
   decidir?: (solicitud: SolicitudCobro) => ResultadoCobro;
+  decidirTransferencia?: (solicitud: SolicitudTransferencia) => ResultadoTransferencia;
 }): PasarelaFalsa {
+  const transferencias = new Map<string, ResultadoTransferencia>();
   const respuestas = new Map<string, { solicitud: SolicitudCobro; resultado: ResultadoCobro }>();
   const cargos: { llave: string; solicitud: SolicitudCobro }[] = [];
   let llamadas = 0;
@@ -66,6 +70,21 @@ export function crearPasarelaFalsa(opciones?: {
 
     async prepararTarjeta(solicitud: SolicitudTarjeta): Promise<PreparacionTarjeta> {
       return { clientSecret: `falso_seti_${solicitud.compradorId}_secret` };
+    },
+
+    async transferir(solicitud: SolicitudTransferencia): Promise<ResultadoTransferencia> {
+      if (!Number.isInteger(solicitud.montoCentavos) || solicitud.montoCentavos <= 0) {
+        throw new Error(`Monto de transferencia inválido: ${solicitud.montoCentavos}`);
+      }
+      // Idempotente como Stripe: la misma transferencia contesta lo mismo.
+      const previa = transferencias.get(solicitud.transferenciaId);
+      if (previa) return previa;
+      const resultado = opciones?.decidirTransferencia?.(solicitud) ?? {
+        estado: "exitoso" as const,
+        referenciaPasarela: `falso_tr_${solicitud.transferenciaId}`,
+      };
+      transferencias.set(solicitud.transferenciaId, resultado);
+      return resultado;
     },
   };
 }

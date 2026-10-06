@@ -403,7 +403,8 @@ la otra) · **Sustituida**.
 ## D-33 · Cobra la plataforma y le transfiere a Moretti (cargo de destino)
 
 - **Fecha / quién:** 5 oct · Ethan, con la respuesta de Ana Cris ·
-  **Vigente**. Cierra I-9. Sustituye a D-32 en la forma del cargo.
+  **Sustituida por D-34** en la transferencia (sigue vigente que cobra la
+  plataforma y la tarjeta vive ahí). Cierra I-9. Sustituye a D-32 en la forma del cargo.
 - **Lo que dijo Ana Cris:** el comercio que cobra es la plataforma, y de ahí
   se le pasa el dinero a Moretti.
 - **Decisión:** **cargo de destino** de Stripe Connect. El PaymentIntent se
@@ -431,3 +432,30 @@ la otra) · **Sustituida**.
 - **Preguntas abiertas** (I-10, I-11): si la plataforma retiene el dinero o
   lo transfiere al cobrar; quién emite el CFDI al comprador ahora que cobra
   la plataforma.
+
+## D-34 · La plataforma retiene el dinero hasta que Ana Cris decide pagar a Moretti
+
+- **Fecha / quién:** 5 oct · Ethan, con la respuesta de Ana Cris a I-10 ·
+  **Vigente**. Sustituye a D-33 en la transferencia.
+- **Decisión:** **cargos y transferencias separados** de Stripe Connect. El
+  cobro se hace en la plataforma **sin** `transfer_data` ni
+  `application_fee_amount`: todo el dinero queda en el saldo de la
+  plataforma. Cuando Ana Cris decide pagarle a Moretti, se crea una
+  `Transfer` a la cuenta conectada por el monto cobrado **menos la comisión
+  del canal**, ligada a los cargos que cubre (`source_transaction` o
+  `transfer_group` por proyecto).
+- **Por qué no cargo de destino:** el cargo de destino transfiere en el mismo
+  momento del cobro; Ana Cris quiere decidir cuándo.
+- **Lo que implica:**
+  - La comisión ya no es una «application fee» de Stripe: es lo que la
+    plataforma **no** transfiere. Se sigue guardando en cada `Pago`
+    (`montoComision`), y la transferencia es Σ(monto − comisión).
+  - Hay que llevar en el sistema qué pagos ya se transfirieron y cuáles
+    siguen retenidos, y quién autorizó cada transferencia.
+  - Un reembolso de un pago todavía retenido no toca a Moretti; uno ya
+    transferido necesita revertir la transferencia (`reversals`).
+  - Riesgo financiero: el dinero de Moretti está en el saldo de la
+    plataforma. Hay que conciliar saldo de Stripe contra lo retenido.
+- **Reparto:** el registro de lo retenido, la pantalla para que Ana Cris
+  autorice y el motor son de Ethan; la `Transfer` real en Stripe y su
+  webhook (`transfer.created`, `transfer.reversed`) son de Charly.

@@ -4,6 +4,8 @@ import type {
   ResultadoCobro,
   SolicitudCobro,
   SolicitudTarjeta,
+  SolicitudTransferencia,
+  ResultadoTransferencia,
 } from "./contrato";
 
 /**
@@ -18,9 +20,14 @@ import type {
  * - Llave de idempotencia: usa `llaveIdempotencia(solicitud)` de ./contrato
  *   (nunca la hora, nunca un aleatorio). El intento va porque Stripe
  *   recuerda también los rechazos: sin él, un reintento no reintenta.
- * - Cargo directo sobre la cuenta de Moretti del proyecto (`proyectoId` →
- *   Stripe-Account) con application_fee_amount = comisionCentavos. Los
- *   montos ya llegan en centavos enteros: no multipliques por 100.
+ * - D-34 (5 oct): cobra la PLATAFORMA y retiene. El PaymentIntent se crea
+ *   en la plataforma, sin Stripe-Account, sin transfer_data y sin
+ *   application_fee_amount. La comisión es lo que la plataforma no
+ *   transfiere; `comisionCentavos` se guarda en el pago. Los montos ya
+ *   llegan en centavos enteros: no multipliques por 100.
+ * - `transferir`: Transfer a la cuenta conectada del proyecto por
+ *   `montoCentavos` (ya neto), con idempotencyKey
+ *   `transferencia_${transferenciaId}` y transfer_group por proyecto.
  * - compradorPresente=true → PaymentIntent normal (anticipo).
  *   compradorPresente=false → off_session: true (mensualidad).
  * - status requires_action o processing → `estado: "pendiente"`, con el id
@@ -30,9 +37,8 @@ import type {
  *   `codigoRechazo` que mande Stripe (insufficient_funds, etc.) y
  *   `reintentar` según la tabla de la especificación — el motor decide
  *   cuándo reintentar, tú solo le pasas el código.
- * - Dónde vive la tarjeta guardada: mientras Ana Cris decide, la variante
- *   provisional es la del plan B (docs/decisiones.md, D-02): en la
- *   plataforma, y se clona a la cuenta de Moretti al cobrar.
+ * - La tarjeta vive en la plataforma (D-32) y ya no se clona: el cargo
+ *   también es en la plataforma (D-34).
  */
 export const pasarelaStripe: Pasarela = {
   async cobrar(_solicitud: SolicitudCobro): Promise<ResultadoCobro> {
@@ -40,5 +46,8 @@ export const pasarelaStripe: Pasarela = {
   },
   async prepararTarjeta(_solicitud: SolicitudTarjeta): Promise<PreparacionTarjeta> {
     throw new Error("pasarelaStripe.prepararTarjeta: todavía no implementada — Sprint 1, S1-06.");
+  },
+  async transferir(_solicitud: SolicitudTransferencia): Promise<ResultadoTransferencia> {
+    throw new Error("pasarelaStripe.transferir: todavía no implementada — D-34, Charly.");
   },
 };

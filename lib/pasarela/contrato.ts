@@ -79,6 +79,23 @@ export interface PreparacionTarjeta {
   clientSecret: string;
 }
 
+/**
+ * Una transferencia de la plataforma a la cuenta de Moretti (D-34): la
+ * plataforma retiene lo cobrado hasta que Ana Cris autoriza pagarle.
+ * El monto ya viene neto (cobrado − comisión), en centavos.
+ */
+export interface SolicitudTransferencia {
+  transferenciaId: string;
+  proyectoId: string;
+  montoCentavos: number;
+  /** Las referencias de los cargos que cubre (para `source_transaction` o `transfer_group`). */
+  referenciasCargos: string[];
+}
+
+export type ResultadoTransferencia =
+  | { estado: "exitoso"; referenciaPasarela: string }
+  | { estado: "fallido"; mensaje: string };
+
 export interface Pasarela {
   /**
    * Ejecuta un cobro. Debe ser idempotente: llamarla dos veces con la
@@ -92,6 +109,12 @@ export interface Pasarela {
    * guardada se confirma después por webhook (setup_intent.succeeded).
    */
   prepararTarjeta(solicitud: SolicitudTarjeta): Promise<PreparacionTarjeta>;
+
+  /**
+   * Transfiere a la cuenta conectada del proyecto (D-34). Idempotente por
+   * `transferenciaId`: la llave es `transferencia_${transferenciaId}`.
+   */
+  transferir(solicitud: SolicitudTransferencia): Promise<ResultadoTransferencia>;
 }
 
 /**
