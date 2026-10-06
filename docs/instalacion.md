@@ -19,7 +19,7 @@ pasarela simulada.
 
 ```bash
 git clone https://github.com/ethanPRS/moretti.git
-cd moretti/prototipo        # o la carpeta donde quedó package.json
+cd moretti                  # la raíz del repo es el prototipo (ahí está package.json)
 npm ci                      # instala exactamente lo del package-lock
 
 cp .env.example .env
@@ -55,6 +55,7 @@ npm run dev                 # http://localhost:3000 · back office en /admin
 
 ```bash
 npm test                    # 180 pruebas: unitarias + integración
+npx next typegen            # genera los tipos de rutas que usa tsc (lo hace también build)
 npx tsc --noEmit            # tipos
 npm run lint
 npm run build               # compilación de producción
@@ -94,7 +95,13 @@ Prueba de humo a mano:
 
 ## 6. Comprobación desde un clon limpio (6 oct)
 
-Se clonó la rama en una carpeta nueva, con una base nueva, siguiendo sólo
-este documento: `npm ci`, `.env` desde el ejemplo, `migrate reset`,
-`completar-unidades`, `npm test`, `npm run build`. Resultado en
-`docs/sprint-03/bitacora-diaria.md`.
+Se clonó la rama `ethan/sprint-3` en una carpeta nueva, con bases nuevas
+(`moretti_clon_dev`, `moretti_clon_pruebas`), siguiendo sólo este documento:
+`npm ci`, `.env` desde el ejemplo (hash y secreto con los comandos de arriba),
+`createdb`, `migrate reset` (12 migraciones y la siembra),
+`completar-unidades` y `npm test`: **180 de 180 pruebas en verde**.
+
+Dos ajustes que salieron de esa prueba y ya están arriba: la raíz del repo es
+la carpeta del prototipo, y `tsc` necesita `next typegen` (o un build) antes.
+El `npm run build` del clon no terminó porque el disco de la máquina se llenó;
+el mismo build sí pasó en la carpeta de trabajo.

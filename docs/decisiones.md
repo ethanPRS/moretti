@@ -459,3 +459,20 @@ la otra) · **Sustituida**.
 - **Reparto:** el registro de lo retenido, la pantalla para que Ana Cris
   autorice y el motor son de Ethan; la `Transfer` real en Stripe y su
   webhook (`transfer.created`, `transfer.reversed`) son de Charly.
+
+## D-35 · El upgrade agrega renglones nuevos y no toca los congelados
+
+- **Fecha / quién:** 6 oct · Ethan (Claude) · **Por ratificar** (T)
+- **Decisión:** la diferencia (paquete nuevo − viejo, a precio de hoy) se
+  reparte sólo entre las partidas que el paquete nuevo agrega, en proporción
+  a su precio de lista. Los renglones que ya estaban no cambian (R2). El %
+  que se cobra hoy es el % de anticipo del proyecto (no un 30 % escrito).
+- **Límites:** sólo entre paquetes cerrados (modalidad PAQUETE), sólo hacia
+  arriba, el nuevo tiene que contener al viejo con las mismas cantidades, y
+  si el comprador ya había agregado a lista algo que el nuevo incluye, no
+  procede (se cobraría dos veces): lo cotiza comercial.
+- **Si el banco rechaza la diferencia:** se restituye todo con otra versión y
+  los renglones agregados se retiran (no se vendieron: no se cobró nada por
+  ellos). El evento de la versión lo explica.
+- **Qué la cambiaría:** que Moretti quiera reprorratear el precio de
+  conjunto entre todas las partidas (rompería R2).
