@@ -83,3 +83,9 @@ hizo.
     cobrarle a la tarjeta, y una cuenta de Moretti comprometida no las expone.
     Queda abierta sólo la pregunta legal de quién es el comercio que cobra
     (I-9). Con esto Charly ya puede avanzar con K y O.
+11. **Ana Cris respondió la pregunta legal (I-9):** cobra la plataforma y le
+    transfiere a Moretti. Se cambia a **cargo de destino** (D-33): la tarjeta
+    sigue en la plataforma y ya no se clona. El código de Charly hoy hace
+    cargo directo; los cambios puntuales están en `notas-para-charly.md` §6.
+    Salen dos preguntas nuevas: si se retiene el dinero de Moretti (I-10) y
+    quién emite el CFDI ahora que cobra la plataforma (I-11, afecta a S).

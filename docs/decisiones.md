@@ -366,8 +366,8 @@ la otra) · **Sustituida**.
 
 ## D-32 · La tarjeta vive en la plataforma y se clona a Moretti en cada cobro
 
-- **Fecha / quién:** 5 oct · Ethan (decidido con Claude) · **Vigente** en lo
-  técnico; la pregunta legal queda abierta (I-9). Sustituye a D-02.
+- **Fecha / quién:** 5 oct · Ethan (decidido con Claude) · **Sustituida por
+  D-33** en la forma del cargo (la tarjeta sigue en la plataforma). Sustituye a D-02.
 - **Decisión:** el `Customer` y el método de pago del comprador se guardan
   en la cuenta de la **plataforma** (día uno), con un SetupIntent
   `usage: "off_session"` y 3-D Secure al guardarla. En cada cobro se
@@ -399,3 +399,35 @@ la otra) · **Sustituida**.
 - **Qué la cambiaría:** que el abogado diga que el comercio que cobra debe
   ser la plataforma (cargo de destino en lugar de cargo directo). La tarjeta
   seguiría en la plataforma; cambiaría la forma del cargo.
+
+## D-33 · Cobra la plataforma y le transfiere a Moretti (cargo de destino)
+
+- **Fecha / quién:** 5 oct · Ethan, con la respuesta de Ana Cris ·
+  **Vigente**. Cierra I-9. Sustituye a D-32 en la forma del cargo.
+- **Lo que dijo Ana Cris:** el comercio que cobra es la plataforma, y de ahí
+  se le pasa el dinero a Moretti.
+- **Decisión:** **cargo de destino** de Stripe Connect. El PaymentIntent se
+  crea en la cuenta de la **plataforma**, con
+  `transfer_data.destination = Proyecto.stripeConnectedAccountId` y
+  `application_fee_amount` = la comisión del canal. Stripe transfiere a
+  Moretti el monto menos la comisión en el mismo movimiento. Sin
+  `on_behalf_of`, que volvería a poner a Moretti como el comercio.
+- **Qué cambia respecto a D-32:**
+  - La tarjeta sigue en la plataforma, pero **ya no se clona**: el cargo se
+    hace ahí mismo. Es más simple y Moretti nunca tiene una copia.
+  - En el estado de cuenta del comprador aparece **día uno** y las disputas
+    y contracargos le llegan a **la plataforma**, que responde por ellos.
+  - Los eventos llegan a la cuenta de la plataforma, no como eventos de
+    Connect: el webhook ya no recibe `event.account`.
+  - En un reembolso, `reverse_transfer` le quita el dinero a Moretti y
+    `refund_application_fee` decide si se devuelve la comisión. Es justo la
+    casilla que pide la tarea de reembolso del Sprint 3.
+- **Por qué cargo de destino y no cargos y transferencias separados:** con
+  cargo de destino la transferencia es automática, la comisión queda
+  separada en el mismo cargo (el objetivo del Sprint 1) y no hay que
+  conciliar transferencias a mano. Separados sólo conviene si la plataforma
+  tiene que **retener** el dinero de Moretti hasta un evento (por ejemplo,
+  la entrega); está en las preguntas abiertas.
+- **Preguntas abiertas** (I-10, I-11): si la plataforma retiene el dinero o
+  lo transfiere al cobrar; quién emite el CFDI al comprador ahora que cobra
+  la plataforma.

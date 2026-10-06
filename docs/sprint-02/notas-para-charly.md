@@ -54,3 +54,24 @@ que hay que revisar a mano.
 - En ClickUp, **O (cobro programado)** está *complete* desde el 4 de oct, pero
   no hay commits tuyos en GitHub después del 2. Si está en tu máquina, súbelo
   en una rama desde `main` para revisarlo.
+
+## 6. Cambio de forma del cargo: cargo de destino (D-33), urgente para L, K y O
+
+Ana Cris confirmó que **cobra la plataforma y le transfiere a Moretti**. Hoy
+el código hace **cargo directo** (el PaymentIntent vive en la cuenta de
+Moretti). Lo que cambia:
+
+| Dónde | Hoy | Con cargo de destino |
+|---|---|---|
+| `app/api/stripe/create-payment-intent/route.ts` | `paymentIntents.create(…, { stripeAccount })` | Sin `stripeAccount` en las opciones. En los parámetros: `transfer_data: { destination: intento.stripeAccountId }` y el mismo `application_fee_amount`. **Sin `on_behalf_of`.** Se conserva `idempotencyKey`. |
+| `retrieve` del intent existente | con `{ stripeAccount }` | sin `stripeAccount` |
+| `components/pagos/CobrarConStripe.tsx` | `loadStripe(PUBLIC_KEY, { stripeAccount })` | `loadStripe(PUBLIC_KEY)`: el Payment Element habla con la plataforma. |
+| `app/api/stripe/webhook/route.ts` | Exige `event.account` (eventos de Connect) | Los eventos del cobro llegan a la plataforma, sin `event.account`. Endpoint de la cuenta (no «Connect») en el panel y en `stripe listen`. La cuenta destino sale del PaymentIntent (`transfer_data.destination`) o del `IntentoCobro`. |
+| `confirmarCobroStripe` / `marcarIntentoCobroFallido` | Comparan `stripeAccountId` del evento con el del intento | Comparar contra el `transfer_data.destination` del PaymentIntent. |
+| Guardar la tarjeta (K) | — | SetupIntent `usage: "off_session"` en la plataforma; **ya no hay que clonar** el método de pago. |
+| Cobro fuera de sesión (O) | — | `paymentIntents.create({ customer, payment_method, off_session: true, confirm: true, transfer_data, application_fee_amount })` en la plataforma. |
+
+Para probarlo en el panel de Stripe (modo prueba): el cargo aparece en la
+plataforma, con una **transferencia** a la cuenta de Moretti y la
+**comisión de la aplicación** separada. Esa es la comprobación 2 del
+objetivo del Sprint 1.
