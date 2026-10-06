@@ -31,6 +31,7 @@ import {
   puedeTransitar,
 } from "./estados";
 import { explicarRechazo } from "./rechazos";
+import { crearPendienteFiscal } from "./comprobantes";
 
 const { Decimal } = Prisma;
 
@@ -533,7 +534,7 @@ async function aplicarPago(p: {
         // Una confirmación tardía de un cobro que ya se dio por rechazado y se
         // revirtió. El dinero llegó: se registra (R3, D-19), pero no toca el
         // saldo ni el calendario, que ya no la cuentan. Lo revisa una persona.
-        await tx.pago.create({
+        const ajustado = await tx.pago.create({
           data: {
             planId: plan.id,
             exhibicionId: exhibicion.id,
@@ -544,6 +545,8 @@ async function aplicarPago(p: {
             estado: EstadoPago.AJUSTADO,
           },
         });
+        // R8: el dinero llegó, así que también nace sin comprobante.
+        await crearPendienteFiscal(tx, ajustado);
         await tx.evento.create({
           data: {
             entidadTipo: "plan",
@@ -563,7 +566,7 @@ async function aplicarPago(p: {
       // Primero el pago: su exhibicionId es único, así que si dos
       // confirmaciones del mismo cobro llegan juntas, la segunda truena aquí
       // y no toca saldo ni estados.
-      await tx.pago.create({
+      const pago = await tx.pago.create({
         data: {
           planId: plan.id,
           exhibicionId: exhibicion.id,
@@ -578,6 +581,7 @@ async function aplicarPago(p: {
         where: { id: exhibicion.id },
         data: { estado: EstadoExhibicion.PAGADA },
       });
+      await crearPendienteFiscal(tx, pago);
       // Un pago que llega con el plan ya cancelado (el comprador se autenticó
       // tarde) se registra, pero no reabre el plan: eso lo decide una persona.
       const cancelado = plan.estado === EstadoPlan.CANCELADO;
@@ -971,7 +975,7 @@ export async function confirmarCobroStripe(params: {
     const esAnticipo = locked.exhibicion.numero === 0;
     const liquidado = nuevoSaldo.lte(0);
 
-    await tx.pago.create({
+    const pago = await tx.pago.create({
       data: {
         planId: locked.planId,
         exhibicionId: locked.exhibicionId,
@@ -989,6 +993,7 @@ export async function confirmarCobroStripe(params: {
       where: { id: locked.exhibicionId },
       data: { estado: EstadoExhibicion.PAGADA },
     });
+    await crearPendienteFiscal(tx, pago);
     await tx.plan.update({
       where: { id: locked.planId },
       data: {

@@ -8,6 +8,7 @@ const ICONOS = {
   inicio: "M3 11.5 12 4l9 7.5M5.5 10v9.5h13V10",
   cartera: "M4 6.5h16v12H4zM4 10h16M8 14.5h3",
   pagos: "M3.5 7h17v10h-17zM3.5 10.5h17M7 14h4",
+  fiscal: "M6.5 3.5h8l3 3v14h-11zM14.5 3.5v3h3M9 11h6M9 14.5h6M9 18h3",
   proyectos: "M4.5 20V6.5L12 3l7.5 3.5V20M9 20v-5h6v5M9 9.5h.01M15 9.5h.01",
   paquetes: "M4 8l8-4 8 4-8 4-8-4zM4 8v8l8 4 8-4V8M12 12v8",
 } as const;
@@ -17,6 +18,7 @@ const ENLACES: { href: string; texto: string; icono: keyof typeof ICONOS; exacto
   { href: "/admin/proyectos", texto: "Proyectos", icono: "proyectos" },
   { href: "/admin/catalogo", texto: "Paquetes", icono: "paquetes" },
   { href: "/admin/pagos", texto: "Pagos", icono: "pagos" },
+  { href: "/admin/fiscal", texto: "Fiscal", icono: "fiscal" },
 ];
 
 function Icono({ d }: { d: string }) {

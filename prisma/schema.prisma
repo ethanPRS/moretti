@@ -392,7 +392,34 @@ model Pago {
   /// Se guarda el porcentaje aplicado, para que un cambio futuro no altere el histórico.
   porcentajeComision    Decimal    @db.Decimal(5, 4)
   montoComision         Decimal    @db.Decimal(12, 2)
+  comprobante           ComprobanteFiscal?
   createdAt             DateTime   @default(now())
+}
+
+enum EstadoComprobante {
+  PENDIENTE
+  EMITIDO
+}
+
+/// R8: todo cobro nace sin comprobante y hay que cerrarlo (actividad S).
+/// Uno por pago. La fecha límite es el día 5 del mes siguiente al cobro,
+/// recorrida al siguiente hábil (lib/motor/fiscal.ts).
+model ComprobanteFiscal {
+  id          String            @id @default(cuid())
+  pago        Pago              @relation(fields: [pagoId], references: [id])
+  pagoId      String            @unique
+  planId      String
+  monto       Decimal           @db.Decimal(12, 2)
+  fechaCobro  DateTime
+  /// Mediodía UTC del día límite en México.
+  fechaLimite DateTime
+  estado      EstadoComprobante @default(PENDIENTE)
+  /// El folio fiscal (UUID del CFDI) cuando se emite.
+  folioFiscal String?
+  emitidoEn   DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([estado, fechaLimite])
 }
 
 enum EstadoPago {
