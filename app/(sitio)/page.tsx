@@ -1,11 +1,9 @@
 import Image from "next/image";
-import { Prisma } from "@prisma/client";
+import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calcularExhibiciones, DESCUENTO_CONTADO } from "@/lib/motor/calculo";
-import Cotizador, { type Desarrollo } from "./Cotizador";
 import Reveal from "@/components/Reveal";
-
-const { Decimal } = Prisma;
+import Link from "next/link";
+import { ContenidoBoton } from "@/components/Boton";
 
 const PASOS = [
   {
@@ -26,57 +24,14 @@ const PASOS = [
 ];
 
 export default async function SitioPage() {
-  const [proyectos, paquetes] = await Promise.all([
-    prisma.proyecto.findMany({
-      include: {
-        prototipos: {
-          include: {
-            precios: {
-              where: { vigenteHasta: null },
-              include: { paquete: true },
-              orderBy: { paquete: { nivel: "asc" } },
-            },
-          },
-          orderBy: { clave: "asc" },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.paquete.findMany({ orderBy: { nivel: "asc" } }),
-  ]);
+  // Se arma en cada visita, no al compilar: los precios y el mínimo del
+  // proyecto viven en la base y cambian sin volver a desplegar.
+  await connection();
+  // El cotizador vive en /cotizar; aquí sólo se muestran los paquetes.
+  const paquetes = await prisma.paquete.findMany({ orderBy: { nivel: "asc" } });
 
-  // Se cotiza con el mismo motor que después ejecuta los cobros, para que lo
-  // que ve el comprador sea exactamente lo que se le va a cargar.
-  const desarrollos: Desarrollo[] = proyectos.map((proyecto) => ({
-    id: proyecto.id,
-    nombre: proyecto.nombre,
-    prototipos: proyecto.prototipos
-      .filter((proto) => proto.precios.length > 0)
-      .map((proto) => ({
-        id: proto.id,
-        clave: proto.clave,
-        superficie: Number(proto.superficie),
-        recamaras: proto.recamaras,
-        cotizaciones: proto.precios.map((precio) => {
-          const exhibiciones = calcularExhibiciones(
-            new Decimal(precio.monto),
-            new Decimal(proyecto.porcentajeAnticipo)
-          );
-          const total = Number(precio.monto);
-          const contado = Math.round(total * (1 - DESCUENTO_CONTADO));
-          return {
-            paqueteId: precio.paqueteId,
-            paqueteNombre: precio.paquete.nombre,
-            nivel: precio.paquete.nivel,
-            total,
-            anticipo: exhibiciones[0].monto.toNumber(),
-            mensualidad: exhibiciones[1].monto.toNumber(),
-            contado,
-            ahorro: total - contado,
-          };
-        }),
-      })),
-  }));
+  const armable = paquetes.find((p) => p.esArmable);
+  const cerrados = paquetes.filter((p) => !p.esArmable);
 
   return (
     <>
@@ -109,30 +64,28 @@ export default async function SitioPage() {
             mensualidades fijas mientras se construye, sin banco y sin tocar tu hipoteca.
           </p>
           <a
-            href="#cotiza"
+            href="/cotizar"
             className="btn hero-in mt-8"
             style={{ "--hero-delay": "330ms" } as React.CSSProperties}
           >
-            Cotizar mi depa
+            <ContenidoBoton texto="Cotizar mi depa" flecha />
           </a>
         </div>
       </section>
 
       <section id="cotiza" className="py-[76px]">
         <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="max-w-[660px]">
-            <p className="eyebrow">Cotiza tu departamento</p>
-            <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Dinos cuál es tu depa y te decimos cuánto.
-            </h2>
-            <p className="mt-3 text-ink-2">
-              Cada prototipo lleva medidas distintas, así que el precio cambia. Elige el
-              tuyo y mueve entre paquetes para comparar.
-            </p>
-          </Reveal>
-
-          <Reveal className="mt-8" delay={120}>
-            <Cotizador desarrollos={desarrollos} />
+          <Reveal className="card flex flex-wrap items-center justify-between gap-6 bg-ink p-9 text-ground sm:p-12">
+            <div className="max-w-[560px]">
+              <p className="eyebrow text-[#b9cdbe]">Cotiza tu departamento</p>
+              <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
+                Dinos cuál es tu depa y te decimos cuánto pagas al mes.
+              </h2>
+              <p className="mt-3 text-[#dcd8d2]">Tres pasos: desarrollo, departamento y paquete.</p>
+            </div>
+            <Link href="/cotizar" className="btn btn-claro">
+              <ContenidoBoton texto="Abrir el cotizador" flecha />
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -142,56 +95,103 @@ export default async function SitioPage() {
           <Reveal className="max-w-[660px]">
             <p className="eyebrow">Los paquetes</p>
             <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Cuatro niveles. Cada uno incluye todo el anterior.
+              Cuatro niveles, o armas el tuyo.
             </h2>
           </Reveal>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {paquetes.map((p, i) => {
-              const heredadas = paquetes.slice(0, i).flatMap((prev) => prev.partidas);
+            {cerrados.map((p, i) => {
+              const heredadas = cerrados.slice(0, i).flatMap((prev) => prev.partidas);
               return (
                 <Reveal key={p.id} delay={i * 90} className="flex">
                   <article className="card lift flex flex-1 flex-col overflow-hidden">
-                  {p.imagen && (
-                    <div className="relative aspect-[4/3] bg-surface-2">
-                      <Image
-                        src={p.imagen}
-                        alt={`Interior con el paquete ${p.nombre}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col gap-3 p-5">
-                    <div>
-                      <p className="eyebrow">Paquete 0{p.nivel}</p>
-                      <h3 className="mt-1.5 text-[23px]">{p.nombre}</h3>
-                      <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
-                    </div>
-                    <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
-                      {heredadas.map((partida) => (
-                        <li key={partida} className="relative pl-4 text-muted">
-                          <span className="absolute left-0 text-line-2">·</span>
-                          {partida}
-                        </li>
-                      ))}
-                      {p.partidas.map((partida) => (
-                        <li
-                          key={partida}
-                          className="relative pl-4 font-semibold text-ink"
-                        >
-                          <span className="absolute left-0 font-bold text-accent">+</span>
-                          {partida}
-                        </li>
-                      ))}
-                    </ul>
+                    {p.imagen && (
+                      <div className="relative aspect-[4/3] bg-surface-2">
+                        <Image
+                          src={p.imagen}
+                          alt={`Interior con el paquete ${p.nombre}`}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-1 flex-col gap-3 p-5">
+                      <div>
+                        <p className="eyebrow">Paquete 0{p.nivel}</p>
+                        <h3 className="mt-1.5 text-[23px]">{p.nombre}</h3>
+                        <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
+                      </div>
+                      <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
+                        {heredadas.map((partida) => (
+                          <li key={partida} className="relative pl-4 text-muted">
+                            <span className="absolute left-0 text-line-2">·</span>
+                            {partida}
+                          </li>
+                        ))}
+                        {p.partidas.map((partida) => (
+                          <li key={partida} className="relative pl-4 font-semibold text-ink">
+                            <span className="absolute left-0 font-bold text-accent">+</span>
+                            {partida}
+                          </li>
+                        ))}
+                      </ul>
+                      <Link
+                        href={`/paquetes/${p.slug}`}
+                        className="btn btn-ghost btn-sm mt-auto self-start"
+                      >
+                        <ContenidoBoton texto="Ver qué incluye" flecha />
+                      </Link>
                     </div>
                   </article>
                 </Reveal>
               );
             })}
           </div>
+
+          {armable && (
+            <Reveal className="mt-5" delay={120}>
+              <article className="card lift grid overflow-hidden md:grid-cols-[1fr_1.4fr]">
+                {armable.imagen && (
+                  <div className="relative aspect-[4/3] bg-surface-2 md:aspect-auto">
+                    <Image
+                      src={armable.imagen}
+                      alt={`Interior con el paquete ${armable.nombre}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 40vw"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-4 p-7 sm:p-9">
+                  <div>
+                    <p className="eyebrow text-warm">Paquete 0{armable.nivel} · a tu medida</p>
+                    <h3 className="mt-1.5 text-[27px]">{armable.nombre}</h3>
+                    <p className="mt-1.5 max-w-[52ch] text-ink-2">
+                      Sin cocina. Marca solo lo que quieras, pieza por pieza, a precio de
+                      lista. Tú decides cuántos climas lleva tu depa.
+                    </p>
+                  </div>
+                  <ul className="grid gap-1.5 border-t border-line pt-4 text-[14px] sm:grid-cols-2">
+                    {armable.partidas.map((partida) => (
+                      <li key={partida} className="relative pl-4 text-ink">
+                        <span className="absolute left-0 font-bold text-warm">+</span>
+                        {partida}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto flex flex-wrap gap-3 pt-2">
+                    <a href="/cotizar" className="btn btn-warm btn-sm">
+                      <ContenidoBoton texto="Armar el mío" flecha />
+                    </a>
+                    <Link href={`/paquetes/${armable.slug}`} className="btn btn-ghost btn-sm">
+                      <ContenidoBoton texto="Ver qué incluye" flecha />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
+          )}
         </div>
       </section>
 
@@ -232,8 +232,8 @@ export default async function SitioPage() {
                 muestra.
               </p>
             </div>
-            <a href="#cotiza" className="btn">
-              Cotizar mi depa
+            <a href="/cotizar" className="btn">
+              <ContenidoBoton texto="Cotizar mi depa" flecha />
             </a>
           </Reveal>
         </div>

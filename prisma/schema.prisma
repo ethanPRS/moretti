@@ -8,55 +8,115 @@ datasource db {
 }
 
 model Desarrollador {
-  id                     String        @id @default(cuid())
+  id                     String     @id @default(cuid())
   nombre                 String
   contacto               String?
   condicionesComerciales String?
   proyectos              Proyecto[]
-  createdAt              DateTime      @default(now())
+  createdAt              DateTime   @default(now())
 }
 
 model Proyecto {
-  id                 String        @id @default(cuid())
-  desarrollador      Desarrollador @relation(fields: [desarrolladorId], references: [id])
-  desarrolladorId    String
-  nombre             String
-  etapaPipeline      String        @default("Vendiendo")
-  imagen             String?
-  numeroUnidades     Int
+  id                       String        @id @default(cuid())
+  desarrollador            Desarrollador @relation(fields: [desarrolladorId], references: [id])
+  desarrolladorId          String
+  nombre                   String
+  etapaPipeline            String        @default("Vendiendo")
+  imagen                   String?
+  numeroUnidades           Int
   /// Parámetros de configuración, nunca constantes en el código (spec §12).
-  porcentajeAnticipo Decimal       @default(0.30) @db.Decimal(5, 4)
-  porcentajeComision Decimal       @db.Decimal(5, 4)
-  fechaEntregaUnidades DateTime?
-  prototipos         Prototipo[]
-  unidades           Unidad[]
-  createdAt          DateTime      @default(now())
+  porcentajeAnticipo       Decimal       @default(0.30) @db.Decimal(5, 4)
+  porcentajeComision       Decimal       @db.Decimal(5, 4)
+  /// Debajo de esto no se financia a 12 meses: se paga de contado (spec §4).
+  minimoPlan               Decimal       @default(50000) @db.Decimal(12, 2)
+  stripeConnectedAccountId String?
+  fechaEntregaUnidades     DateTime?
+  prototipos               Prototipo[]
+  unidades                 Unidad[]
+  createdAt                DateTime      @default(now())
 }
 
 model Prototipo {
-  id         String    @id @default(cuid())
-  proyecto   Proyecto  @relation(fields: [proyectoId], references: [id])
-  proyectoId String
-  clave      String
-  superficie Decimal   @db.Decimal(8, 2)
-  recamaras  Int
-  precios    Precio[]
-  unidades   Unidad[]
-  createdAt  DateTime  @default(now())
+  id             String          @id @default(cuid())
+  proyecto       Proyecto        @relation(fields: [proyectoId], references: [id])
+  proyectoId     String
+  clave          String
+  superficie     Decimal         @db.Decimal(8, 2)
+  recamaras      Int
+  /// Cuántos climas trae de fábrica: uno por espacio (sala + cada recámara).
+  /// Spec §4: vive en el catálogo del prototipo, nunca en el código.
+  climasDefault  Int             @default(1)
+  precios        Precio[]
+  preciosPartida PrecioPartida[]
+  unidades       Unidad[]
+  createdAt      DateTime        @default(now())
 
   @@unique([proyectoId, clave])
 }
 
 model Paquete {
-  id          String   @id @default(cuid())
-  nivel       Int      @unique
+  id          String    @id @default(cuid())
+  nivel       Int       @unique
+  slug        String    @unique
   nombre      String
   descripcion String?
   imagen      String?
+  /// Los renglones de mercadotecnia que se listan en la tarjeta.
   partidas    String[]
+  /// El paquete 05: no trae lista fija, el comprador la arma.
+  esArmable   Boolean   @default(false)
+  /// Los productos que lo componen, para la ficha de cada uno.
+  catalogo    Partida[]
   precios     Precio[]
   planes      Plan[]
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+}
+
+enum FamiliaPartida {
+  A_LA_MEDIDA
+  DE_CATALOGO
+  VALE
+}
+
+/// Catálogo de productos. Sustituye al paquete como unidad de venta:
+/// spec §4, el plan se arma sobre una lista de partidas con precio.
+model Partida {
+  id         String          @id @default(cuid())
+  clave      String          @unique
+  nombre     String
+  familia    FamiliaPartida
+  /// Se puede escoger en «Arma el tuyo». La cocina no.
+  armable    Boolean         @default(true)
+  /// Viene marcada de entrada en «Arma el tuyo».
+  porDefecto Boolean         @default(false)
+  /// Se cotiza por equipo, con contador (los climas).
+  porEquipo  Boolean         @default(false)
+  /// Su ficha lleva plano: sólo las que se fabrican a la medida.
+  llevaPlano Boolean         @default(false)
+  imagen     String?
+  /// Pares [etiqueta, valor]. Los que dicen «— Moretti» siguen pendientes.
+  ficha      Json
+  /// Hasta tres opciones de acabado: [nombre, color]. Null si no aplica.
+  acabados   Json?
+  orden      Int
+  paquetes   Paquete[]
+  precios    PrecioPartida[]
+  renglones  RenglonPlan[]
+  createdAt  DateTime        @default(now())
+}
+
+/// Precio de lista público de una partida en un prototipo.
+/// Ya viene redondeado hacia arriba a la centena (spec §4).
+model PrecioPartida {
+  id          String    @id @default(cuid())
+  prototipo   Prototipo @relation(fields: [prototipoId], references: [id])
+  prototipoId String
+  partida     Partida   @relation(fields: [partidaId], references: [id])
+  partidaId   String
+  monto       Decimal   @db.Decimal(12, 2)
+  createdAt   DateTime  @default(now())
+
+  @@unique([prototipoId, partidaId])
 }
 
 /// Versionado: nunca se sobreescribe. Un precio nuevo cierra la vigencia del anterior.
@@ -130,14 +190,17 @@ model Contrato {
 }
 
 model Comprador {
-  id            String   @id @default(cuid())
-  nombre        String
-  contacto      String
-  unidad        Unidad   @relation(fields: [unidadId], references: [id])
-  unidadId      String   @unique
-  folio         String   @unique
-  fechaRegistro DateTime @default(now())
-  planes        Plan[]
+  id                    String   @id @default(cuid())
+  nombre                String
+  contacto              String
+  unidad                Unidad   @relation(fields: [unidadId], references: [id])
+  unidadId              String   @unique
+  folio                 String   @unique
+  stripeCustomerId      String?
+  stripePaymentMethodId String?
+  stripeAccountId       String?
+  fechaRegistro         DateTime @default(now())
+  planes                Plan[]
 }
 
 enum EstadoPlan {
@@ -147,24 +210,93 @@ enum EstadoPlan {
   CANCELADO
 }
 
+/// Con qué regla de armado se cotizó el plan (spec §4, S1-03).
+enum ModalidadPlan {
+  /// Paquete cerrado a su precio de conjunto, más lo agregado a lista.
+  PAQUETE
+  /// Un paquete cerrado al que se le quitó algo: todo a precio de lista.
+  A_LISTA
+  /// Canasta desde cero, pieza por pieza a lista, sin cocina.
+  ARMA_EL_TUYO
+}
+
 model Plan {
-  id          String     @id @default(cuid())
-  comprador   Comprador  @relation(fields: [compradorId], references: [id])
-  compradorId String
-  paquete     Paquete    @relation(fields: [paqueteId], references: [id])
-  paqueteId   String
-  precio      Precio     @relation(fields: [precioId], references: [id])
-  precioId    String
-  version     Int        @default(1)
+  id                 String         @id @default(cuid())
+  comprador          Comprador      @relation(fields: [compradorId], references: [id])
+  compradorId        String
+  /// Etiqueta, no la fuente de verdad: lo vendido son los renglones (spec §4).
+  paquete            Paquete        @relation(fields: [paqueteId], references: [id])
+  paqueteId          String
+  /// El precio de conjunto que se usó. Sólo en modalidad PAQUETE.
+  precio             Precio?        @relation(fields: [precioId], references: [id], onDelete: Restrict)
+  precioId           String?
+  modalidad          ModalidadPlan  @default(PAQUETE)
+  version            Int            @default(1)
   /// R2: el precio se congela con el anticipo, no con la cotización.
   /// Null mientras el plan sea todavía una cotización.
   fechaCongelamiento DateTime?
-  montoCongelado     Decimal    @db.Decimal(12, 2)
-  saldo              Decimal    @db.Decimal(12, 2)
-  estado             EstadoPlan @default(COTIZADO)
+  montoCongelado     Decimal        @db.Decimal(12, 2)
+  saldo              Decimal        @db.Decimal(12, 2)
+  estado             EstadoPlan     @default(COTIZADO)
+  renglones          RenglonPlan[]
   exhibiciones       Exhibicion[]
   pagos              Pago[]
-  createdAt          DateTime   @default(now())
+  intentosCobro      IntentoCobro[]
+  createdAt          DateTime       @default(now())
+}
+
+enum OrigenRenglon {
+  /// Venía en el paquete cerrado.
+  PAQUETE
+  /// La agregó el comprador (en «Arma el tuyo», todas).
+  AGREGADA
+}
+
+/// Lo que se vendió, partida por partida (S1-02). La suma de precioCongelado
+/// de los renglones es el montoCongelado del plan, al peso (R7). Al cobrar el
+/// anticipo se congela la lista completa, no sólo el total (R2): después no
+/// hay ninguna operación del motor que cambie un renglón de precio.
+model RenglonPlan {
+  id              String           @id @default(cuid())
+  plan            Plan             @relation(fields: [planId], references: [id])
+  planId          String
+  partida         Partida          @relation(fields: [partidaId], references: [id])
+  partidaId       String
+  cantidad        Int
+  /// Precio de lista por pieza al momento de cotizar (copia de PrecioPartida).
+  precioLista     Decimal          @db.Decimal(12, 2)
+  /// Lo que el renglón suma al plan, cantidad incluida. En un paquete cerrado
+  /// es su parte del precio de conjunto (docs/decisiones.md, D-05).
+  precioCongelado Decimal          @db.Decimal(12, 2)
+  origen          OrigenRenglon
+  /// La opción de acabado que eligió el comprador, tal como está en
+  /// Partida.acabados («Opción 2 · Nogal»). Cambia hasta el levantamiento (R6).
+  acabado         String?
+  /// Hasta dos, para la orden de producción (S1-05).
+  fotos           FotoReferencia[]
+  createdAt       DateTime         @default(now())
+
+  @@unique([planId, partidaId, origen])
+}
+
+/// Una foto que sube el comprador para que Moretti vea lo que imagina: el
+/// panel que vio en el catálogo, el color exacto. No sustituye al acabado:
+/// lo acompaña. El archivo vive detrás de lib/almacenamiento (D-12).
+model FotoReferencia {
+  id             String      @id @default(cuid())
+  renglon        RenglonPlan @relation(fields: [renglonId], references: [id])
+  renglonId      String
+  /// 1 o 2. Con el índice único, dos subidas simultáneas no dejan tres fotos.
+  posicion       Int
+  /// Dónde quedó en el almacenamiento. Nunca un nombre que mande el navegador.
+  clave          String      @unique
+  nombreOriginal String
+  /// image/jpeg o image/png, según el contenido del archivo (D-11).
+  tipo           String
+  bytes          Int
+  createdAt      DateTime    @default(now())
+
+  @@unique([renglonId, posicion])
 }
 
 enum EstadoExhibicion {
@@ -174,34 +306,96 @@ enum EstadoExhibicion {
 }
 
 model Exhibicion {
-  id              String           @id @default(cuid())
-  plan            Plan             @relation(fields: [planId], references: [id])
-  planId          String
+  id                 String           @id @default(cuid())
+  plan               Plan             @relation(fields: [planId], references: [id])
+  planId             String
   /// 0 = anticipo, 1..12 = mensualidades.
-  numero          Int
-  fechaProgramada DateTime
-  monto           Decimal          @db.Decimal(12, 2)
-  estado          EstadoExhibicion @default(PENDIENTE)
-  pago            Pago?
-  createdAt       DateTime         @default(now())
+  numero             Int
+  fechaProgramada    DateTime
+  monto              Decimal          @db.Decimal(12, 2)
+  estado             EstadoExhibicion @default(PENDIENTE)
+  /// Cuántos cobros rechazó el banco. El siguiente intento es este + 1 y va
+  /// en la llave de idempotencia (D-13). Un cobro pendiente no lo sube.
+  intentosRechazados Int              @default(0)
+  pago               Pago?
+  intentosCobro      IntentoCobro[]
+  createdAt          DateTime         @default(now())
 
   @@unique([planId, numero])
 }
 
 /// R3: un cobro ejecutado no se edita ni se borra.
 model Pago {
-  id           String     @id @default(cuid())
-  plan         Plan       @relation(fields: [planId], references: [id])
-  planId       String
-  exhibicion   Exhibicion @relation(fields: [exhibicionId], references: [id])
-  exhibicionId String     @unique
-  monto        Decimal    @db.Decimal(12, 2)
-  fecha        DateTime   @default(now())
-  referenciaStripe String?
+  id                    String     @id @default(cuid())
+  plan                  Plan       @relation(fields: [planId], references: [id])
+  planId                String
+  exhibicion            Exhibicion @relation(fields: [exhibicionId], references: [id])
+  exhibicionId          String     @unique
+  monto                 Decimal    @db.Decimal(12, 2)
+  fecha                 DateTime   @default(now())
+  referenciaStripe      String?
+  stripePaymentIntentId String?    @unique
+  stripeChargeId        String?
+  stripeAccountId       String?
+  estado                EstadoPago @default(CONFIRMADO)
   /// Se guarda el porcentaje aplicado, para que un cambio futuro no altere el histórico.
-  porcentajeComision Decimal @db.Decimal(5, 4)
-  montoComision      Decimal @db.Decimal(12, 2)
-  createdAt          DateTime @default(now())
+  porcentajeComision    Decimal    @db.Decimal(5, 4)
+  montoComision         Decimal    @db.Decimal(12, 2)
+  createdAt             DateTime   @default(now())
+}
+
+enum EstadoPago {
+  CONFIRMADO
+  REEMBOLSADO
+  DISPUTADO
+  AJUSTADO
+}
+
+enum EstadoIntentoCobro {
+  CREADO
+  REQUIERE_ACCION
+  PROCESANDO
+  CONFIRMADO
+  FALLIDO
+  CANCELADO
+}
+
+/// Un intento existe antes de Pago. Solo un webhook confirmado crea el Pago.
+model IntentoCobro {
+  id                    String             @id @default(cuid())
+  exhibicion            Exhibicion         @relation(fields: [exhibicionId], references: [id])
+  exhibicionId          String
+  plan                  Plan               @relation(fields: [planId], references: [id])
+  planId                String
+  idempotencyKey        String             @unique
+  stripePaymentIntentId String?            @unique
+  stripeAccountId       String
+  monto                 Decimal            @db.Decimal(12, 2)
+  porcentajeComision    Decimal            @db.Decimal(5, 4)
+  montoComision         Decimal            @db.Decimal(12, 2)
+  estado                EstadoIntentoCobro @default(CREADO)
+  codigoFallo           String?
+  mensajeFallo          String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([exhibicionId, estado])
+  @@index([planId, createdAt])
+}
+
+/// Registro durable de eventos Stripe; el ID externo evita reprocesar duplicados.
+model EventoStripe {
+  id              String    @id @default(cuid())
+  stripeEventId   String    @unique
+  stripeAccountId String
+  tipo            String
+  payload         Json
+  procesado       Boolean   @default(false)
+  procesadoEn     DateTime?
+  error           String?
+  createdAt       DateTime  @default(now())
+
+  @@index([stripeAccountId, tipo])
 }
 
 /// Bitácora append-only: nunca se edita ni se borra.

@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { ContenidoBoton } from "@/components/Boton";
 
 const secciones = [
-  { href: "#cotiza", label: "Cotiza" },
-  { href: "#paquetes", label: "Paquetes" },
-  { href: "#como", label: "Cómo funciona" },
+  { href: "/cotizar", label: "Cotiza" },
+  { href: "/#paquetes", label: "Paquetes" },
+  { href: "/#como", label: "Cómo funciona" },
 ];
 
 export default function SitioLayout({ children }: { children: React.ReactNode }) {
@@ -21,17 +22,17 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
           </Link>
           <div className="flex items-center gap-7 text-[15px]">
             {secciones.map((s) => (
-              <a
+              <Link
                 key={s.href}
                 href={s.href}
                 className="hidden text-ink-2 hover:text-accent sm:inline"
               >
                 {s.label}
-              </a>
+              </Link>
             ))}
-            <a href="#cotiza" className="btn btn-sm">
-              Cotizar mi depa
-            </a>
+            <Link href="/cotizar" className="btn btn-sm">
+              <ContenidoBoton texto="Cotizar mi depa" />
+            </Link>
           </div>
         </nav>
       </header>
@@ -48,7 +49,16 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
             Moretti fabrica, instala, garantiza y factura. día uno presenta el programa,
             estructura el plan y da seguimiento a la cobranza.
           </p>
-          <Link href="/panel" className="text-[13px] hover:text-accent">
+          {/* Acceso discreto al back office — sólo para el equipo interno */}
+          <Link
+            href="/admin/login"
+            className="inline-flex items-center gap-1.5 text-[12px] text-muted/60 hover:text-accent transition-colors duration-200"
+            aria-label="Acceso interno al back office"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.75"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
             Acceso interno
           </Link>
         </div>

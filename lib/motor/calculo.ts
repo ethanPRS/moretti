@@ -30,3 +30,7 @@ export function calcularExhibiciones(
     { numero: PLAZO, monto: ultima },
   ];
 }
+
+// El gemelo en enteros vive aparte, sin Prisma, para que el cotizador del
+// sitio (componente de cliente) lo pueda importar.
+export { calcularExhibicionesEnteras } from "./enteros";
