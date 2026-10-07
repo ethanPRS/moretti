@@ -242,6 +242,16 @@ describe("S1-08 · el motor cobra a través de la pasarela", () => {
       async prepararTarjeta() {
         return { clientSecret: "x" };
       },
+      async confirmarTarjeta() {
+        return { referenciaTarjeta: "pm_x", descripcion: "tarjeta" };
+      },
+      async reembolsar() {
+        throw new Error("no se usa");
+      },
+      async capturar() {
+        throw new Error("no se usa");
+      },
+      async liberar() {},
     };
 
     await expect(cobrarAnticipo(plan.id, { pasarela })).rejects.toThrow(PasarelaError);

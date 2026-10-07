@@ -41,6 +41,10 @@ configurar nada más. Si tu usuario de Postgres no puede crear bases, crea
 | `lib/motor/cobros.int.test.ts` | integración | El motor cobra a través de la pasarela (S1-08): referencia, centavos, R1, rechazo, reintento con llave nueva, tres envíos simultáneos = un cargo, pendiente + webhook, pasarela caída, doble cargo. |
 | `lib/motor/acabados.int.test.ts` | integración | Acabado, fotos, tercera foto, subidas simultáneas, almacén en memoria, R6 (S1-05). |
 | `lib/motor/estados.test.ts` · `estados.int.test.ts` | ambas | Máquina financiera (S1-13). |
+| `lib/motor/reintentos.test.ts` | unitaria | Una regla por código de rechazo (los de la especificación tal cual), consejo del banco, código desconocido, umbral de suspensión. |
+| `lib/motor/barrido.int.test.ts` | integración | Barrido de vencidas: cobra fuera de sesión sólo lo vencido, dos barridos a la vez = un cobro, no toca pendientes ni planes cancelados, vencida con evento; reintentos por código (insufficient_funds, generic_decline, stolen_card → tarjeta inválida, expired_card y la renovación del banco, consejo do_not_try_again); suspensión a la segunda vencida y reactivación. |
+| `lib/motor/movimientos.int.test.ts` | integración | Reembolsos (back office con `devolverComision` explícito, Dashboard de Moretti, límites), disputas (suspenden, el barrido no cobra, ganada/perdida, cierre antes que apertura), comisión de Stripe, discrepancias de monto y comisión, cargo excedente. |
+| `lib/pasarela/rechazo-y-reintento.stripe.test.ts` | Stripe (`npm run test:stripe`) | De extremo a extremo contra el modo prueba: tarjeta, anticipo con comisión, rechazo de la mensualidad y su reintento. Fuera de `npm test`; se salta sin `STRIPE_SECRET_KEY` y `STRIPE_E2E_CUENTA`. |
 | `prisma/migraciones.int.test.ts` | integración | La migración del 27 contra la base del 25: DU-001 conserva $176,200; SQL y TypeScript reparten igual en 52 planes; si falta un precio se detiene sin dejar nada a medias. |
 
 ## La tabla de pruebas del plan del sprint (sección 08)

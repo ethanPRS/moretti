@@ -3,26 +3,20 @@ import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
-import {
-  CUENTAS,
-  MOVIMIENTOS_SIMULADOS,
-  WEBHOOKS_SIMULADOS,
-  tarifaStripe,
-  type EstadoMovimiento,
-  type Movimiento,
-} from "@/lib/pasarela/simulacion";
+import { EstadoPago } from "@prisma/client";
 
-const ESTADO: Record<EstadoMovimiento, { texto: string; clase: string }> = {
-  exitoso: { texto: "Exitoso", clase: "ok" },
-  rechazado: { texto: "Rechazado", clase: "late" },
-  requiere_accion: { texto: "Requiere acción", clase: "info" },
-  reembolsado: { texto: "Reembolsado", clase: "wait" },
-  en_proceso: { texto: "En proceso", clase: "wait" },
+type MovimientoReal = {
+  id: string;
+  fecha: Date;
+  comprador: string;
+  folio: string;
+  unidad: string;
+  planId: string;
+  concepto: string;
+  monto: number;
+  comision: number;
+  referencia: string | null;
 };
-
-/** plan_cmuhnhnq8006oi7wy9ls7mtgj:exh_2:int_1 → plan_…ls7mtgj:exh_2:int_1. La completa va en el title. */
-const llaveCorta = (llave: string) =>
-  llave.length > 30 ? `${llave.slice(0, 5)}…${llave.slice(-19)}` : llave;
 
 const fecha = (d: Date) =>
   d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
@@ -31,15 +25,11 @@ const hora = (d: Date) =>
 
 const FILTROS = [
   { id: "todos", texto: "Todos" },
-  { id: "exitoso", texto: "Cobrados" },
-  { id: "atencion", texto: "Requieren atención" },
-  { id: "reembolsado", texto: "Reembolsados" },
+  { id: "confirmados", texto: "Confirmados" },
 ] as const;
 type Filtro = (typeof FILTROS)[number]["id"];
 
-const pasaFiltro = (m: Movimiento, f: Filtro) =>
-  f === "todos" ||
-  (f === "atencion" ? m.estado === "rechazado" || m.estado === "requiere_accion" : m.estado === f);
+const pasaFiltro = (_m: MovimientoReal, filtro: Filtro) => filtro === "todos" || filtro === "confirmados";
 
 export default async function PagosPage({
   searchParams,
@@ -50,7 +40,7 @@ export default async function PagosPage({
   const filtro: Filtro = FILTROS.some((f) => f.id === pedido) ? (pedido as Filtro) : "todos";
   // En cada visita, no al compilar: lee la base.
   await connection();
-  const [pagos, proximas] = await Promise.all([
+  const [pagos, proximas, cuentas] = await Promise.all([
     prisma.pago.findMany({
       include: {
         exhibicion: true,
@@ -60,17 +50,23 @@ export default async function PagosPage({
     }),
     prisma.exhibicion.findMany({
       where: {
-        estado: EstadoExhibicion.PENDIENTE,
-        plan: { estado: EstadoPlan.ACTIVO },
+        estado: { in: [EstadoExhibicion.PENDIENTE, EstadoExhibicion.VENCIDA] },
+        plan: { estado: { in: [EstadoPlan.ACTIVO, EstadoPlan.SUSPENDIDO] } },
       },
       include: { plan: { include: { comprador: { include: { unidad: true } } } } },
       orderBy: { fechaProgramada: "asc" },
       take: 6,
     }),
+    prisma.proyecto.findMany({
+      where: { stripeConnectedAccountId: { not: null } },
+      select: { id: true, nombre: true, stripeConnectedAccountId: true },
+      orderBy: { nombre: "asc" },
+    }),
   ]);
 
-  // Los cobros reales del motor (hoy contra la pasarela falsa).
-  const reales: Movimiento[] = pagos.map((p) => {
+  const movimientos: MovimientoReal[] = pagos
+    .filter((p) => p.estado === EstadoPago.CONFIRMADO)
+    .map((p) => {
     const u = p.plan.comprador.unidad;
     return {
       id: p.id,
@@ -82,38 +78,34 @@ export default async function PagosPage({
         p.exhibicion.numero === 0 ? "Anticipo" : `Mensualidad ${p.exhibicion.numero} de 12`,
       monto: Number(p.monto),
       comision: Number(p.montoComision),
-      metodo: "tarjeta",
-      estado: "exitoso",
-      referencia: p.referenciaStripe ?? "pasarela de prueba",
-      llave: `plan_${p.planId}:exh_${p.exhibicion.numero}:int_1`,
-      simulado: false,
+      referencia: p.referenciaStripe,
+      planId: p.planId,
     };
   });
 
-  const movimientos = [...reales, ...MOVIMIENTOS_SIMULADOS].sort(
-    (a, b) => b.fecha.getTime() - a.fecha.getTime()
-  );
-
-  const cobrados = movimientos.filter((m) => m.estado === "exitoso");
-  const bruto = cobrados.reduce((acc, m) => acc + m.monto, 0);
-  const comision = cobrados.reduce((acc, m) => acc + m.comision, 0);
-  // Stripe cobra también en lo reembolsado: su comisión nunca regresa.
-  const stripe = movimientos
-    .filter((m) => m.estado === "exitoso" || m.estado === "reembolsado")
-    .reduce((acc, m) => acc + tarifaStripe(m.monto, m.metodo), 0);
-  const neto = bruto - comision - stripe;
-  const atencion = movimientos.filter((m) => pasaFiltro(m, "atencion")).length;
+  const bruto = movimientos.reduce((acc, m) => acc + m.monto, 0);
+  const comision = movimientos.reduce((acc, m) => acc + m.comision, 0);
+  const neto = bruto - comision;
   const visibles = movimientos.filter((m) => pasaFiltro(m, filtro));
   const pct = (n: number) => (bruto > 0 ? (n / bruto) * 100 : 0);
+  const stripeConfigurado =
+    process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_");
 
   return (
     <div className="flex flex-col gap-10">
       <PageHead
         eyebrow="Pagos · Stripe"
         titulo="Lo que entró y lo que viene."
-        descripcion="Cada cobro es un cargo directo a la cuenta de Moretti; la comisión de día uno se separa en el mismo cobro."
-        accion={<span className="chip info">Modo prueba · datos simulados</span>}
+        descripcion="Movimientos confirmados por el servidor y próximas exhibiciones de los planes."
+        accion={<span className={`chip ${stripeConfigurado ? "info" : "wait"}`}>{stripeConfigurado ? "Modo prueba" : "Configuración de Stripe pendiente"}</span>}
       />
+
+      {!stripeConfigurado && (
+        <p className="note blocked" role="status">
+          Faltan las llaves publicable y secreta de prueba. No se habilitan operaciones de pago.
+        </p>
+      )}
 
       <section className="card flex flex-col gap-6 p-6 sm:p-8">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -122,7 +114,7 @@ export default async function PagosPage({
             <p className="v"><Money valor={bruto} /></p>
           </div>
           <div className="panel-kpi">
-            <p className="k">Neto a Moretti</p>
+            <p className="k">Para Moretti, antes de tarifa Stripe</p>
             <p className="v"><Money valor={Math.round(neto)} /></p>
           </div>
           <div className="panel-kpi">
@@ -130,34 +122,22 @@ export default async function PagosPage({
             <p className="v"><Money valor={comision} /></p>
           </div>
           <div className="panel-kpi">
-            <p className="k">Tarifa Stripe</p>
-            <p className="v"><Money valor={Math.round(stripe)} /></p>
+            <p className="k">Movimientos confirmados</p>
+            <p className="v">{movimientos.length}</p>
           </div>
         </div>
         <div className="flex flex-col gap-3">
-          <p className="text-[14px] text-ink-2">Cómo se reparte cada peso cobrado:</p>
-          <div className="reparto" role="img" aria-label={`Moretti ${pct(neto).toFixed(1)} %, día uno ${pct(comision).toFixed(1)} %, Stripe ${pct(stripe).toFixed(1)} %`}>
+          <p className="text-[14px] text-ink-2">Distribución registrada por el plan, antes de las tarifas de Stripe:</p>
+          <div className="reparto" role="img" aria-label={`Moretti ${pct(neto).toFixed(1)} %, día uno ${pct(comision).toFixed(1)} %`}>
             <span style={{ width: `${pct(neto)}%`, background: "var(--accent)" }} />
             <span style={{ width: `${pct(comision)}%`, background: "var(--warm)" }} />
-            <span style={{ width: `${pct(stripe)}%`, background: "var(--line-2)" }} />
           </div>
           <p className="reparto-leyenda">
             <span><i style={{ background: "var(--accent)" }} />Moretti {pct(neto).toFixed(1)} %</span>
             <span><i style={{ background: "var(--warm)" }} />día uno {pct(comision).toFixed(1)} %</span>
-            <span><i style={{ background: "var(--line-2)" }} />Stripe {pct(stripe).toFixed(1)} %</span>
           </p>
         </div>
       </section>
-
-      {atencion > 0 && (
-        <p className="note blocked">
-          <b>
-            {atencion} {atencion === 1 ? "cobro necesita" : "cobros necesitan"} atención.
-          </b>{" "}
-          Un rechazo se reintenta según su código; uno que pide autenticación espera a que
-          el comprador abra la liga. Ninguno cambia el estado del plan todavía.
-        </p>
-      )}
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -186,15 +166,14 @@ export default async function PagosPage({
                 <th>Concepto</th>
                 <th className="r">Monto</th>
                 <th className="r">Comisión</th>
-                <th className="r">Stripe</th>
                 <th>Referencia</th>
-                <th className="r">Estado</th>
+                <th className="r">Estado servidor</th>
               </tr>
             </thead>
             <tbody>
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-muted">No hay movimientos con este filtro.</td>
+                  <td colSpan={7} className="py-8 text-center text-muted">No hay movimientos confirmados.</td>
                 </tr>
               )}
               {visibles.map((m) => (
@@ -204,17 +183,16 @@ export default async function PagosPage({
                     <span className="block text-[12px] text-muted">{hora(m.fecha)}</span>
                   </td>
                   <td className="whitespace-nowrap">
-                    {m.comprador}
+                    <Link href={`/admin/planes/${m.planId}`} className="hover:text-accent">
+                      {m.comprador}
+                    </Link>
                     <span className="block text-[12px] text-muted">
                       {m.folio} · {m.unidad}
                     </span>
                   </td>
                   <td>
                     {m.concepto}
-                    <span className="block text-[12px] text-muted">
-                      {m.metodo === "spei" ? "SPEI" : "Tarjeta"}
-                      {m.detalle ? ` · ${m.detalle}` : ""}
-                    </span>
+                    <span className="block text-[12px] text-muted">Tarjeta</span>
                   </td>
                   <td className="r">
                     <Money valor={m.monto} />
@@ -222,26 +200,11 @@ export default async function PagosPage({
                   <td className="r">
                     <Money valor={m.comision} />
                   </td>
-                  <td className="r text-muted">
-                    {m.estado === "exitoso" || m.estado === "reembolsado" ? (
-                      <Money valor={tarifaStripe(m.monto, m.metodo)} conCentavos />
-                    ) : (
-                      "$0"
-                    )}
-                  </td>
                   <td>
-                    <span className="font-mono text-[11.5px]">{m.referencia}</span>
-                    <span className="block font-mono text-[11px] text-muted" title={m.llave}>
-                      {llaveCorta(m.llave)}
-                    </span>
+                    <span className="font-mono text-[11.5px]">{m.referencia ?? "—"}</span>
                   </td>
                   <td className="r">
-                    <span className={`chip ${ESTADO[m.estado].clase}`}>
-                      {ESTADO[m.estado].texto}
-                    </span>
-                    {m.simulado && (
-                      <span className="mt-1 block text-[11px] text-muted">simulado</span>
-                    )}
+                    <span className="chip ok">Confirmado</span>
                   </td>
                 </tr>
               ))}
@@ -249,13 +212,12 @@ export default async function PagosPage({
           </table>
         </div>
         <p className="text-[13px] text-muted">
-          Tarifa Stripe México sin IVA: tarjeta 3.6 % + $3 por cobro exitoso, SPEI $7 fijo.
-          Stripe no la devuelve en un reembolso. La llave de idempotencia es la que evita
-          el doble cargo.
+          La referencia y el estado se muestran sólo después de que el webhook aplica el pago en el servidor.
+          La tarifa de Stripe no se calcula en esta pantalla porque aún no se consulta desde el balance de Stripe.
         </p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <section className="flex flex-col gap-4">
           <h2 className="text-[24px]">Próximos cobros</h2>
           <div className="card p-5">
@@ -289,52 +251,23 @@ export default async function PagosPage({
             )}
           </div>
         </section>
-
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[24px]">Webhooks recientes</h2>
-          <div className="card p-5">
-            <ul className="flex flex-col divide-y divide-line">
-              {WEBHOOKS_SIMULADOS.map((w, i) => (
-                <li key={w.id + i} className="flex items-start justify-between gap-4 py-2.5">
-                  <div className="min-w-0">
-                    <p className="font-mono text-[12.5px]">{w.tipo}</p>
-                    <p className="text-[12.5px] text-muted">{w.nota}</p>
-                  </div>
-                  <span
-                    className={`chip shrink-0 ${
-                      w.resultado === "procesado"
-                        ? "ok"
-                        : w.resultado === "duplicado"
-                          ? "wait"
-                          : "info"
-                    }`}
-                  >
-                    {w.resultado}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
       </div>
 
       <div className="grid gap-6">
         <section className="flex flex-col gap-4">
           <h2 className="text-[24px]">Cuentas de Stripe Connect</h2>
           <div className="grid gap-3">
-            {CUENTAS.map((c) => (
-              <div key={c.id} className="card flex items-start justify-between gap-4 p-5">
+            {cuentas.map((cuenta) => (
+              <div key={cuenta.id} className="card flex items-start justify-between gap-4 p-5">
                 <div>
-                  <p className="label">{c.rol}</p>
-                  <p className="mt-1 text-[18px] font-semibold">{c.nombre}</p>
-                  <p className="font-mono text-[11.5px] text-muted">{c.id}</p>
-                  <p className="mt-2 text-[13.5px] text-ink-2">{c.nota}</p>
+                  <p className="label">Cuenta conectada · Moretti</p>
+                  <p className="mt-1 text-[18px] font-semibold">{cuenta.nombre}</p>
+                  <p className="font-mono text-[11.5px] text-muted">{cuenta.stripeConnectedAccountId}</p>
                 </div>
-                <span className={`chip shrink-0 ${c.estado === "Modo prueba" ? "info" : "late"}`}>
-                  {c.estado}
-                </span>
+                <span className="chip info">Registrada en proyecto</span>
               </div>
             ))}
+            {cuentas.length === 0 && <p className="note blocked">Ningún proyecto tiene cuenta conectada configurada.</p>}
           </div>
         </section>
 

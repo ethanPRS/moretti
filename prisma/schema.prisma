@@ -199,6 +199,14 @@ model Comprador {
   stripeCustomerId      String?
   stripePaymentMethodId String?
   stripeAccountId       String?
+  /// «visa terminación 4242». Nunca el número completo.
+  tarjetaDescripcion    String?
+  /// Lo actualiza el banco por su cuenta (payment_method.automatically_updated).
+  tarjetaVenceMes       Int?
+  tarjetaVenceAnio      Int?
+  /// El banco la reportó perdida, robada o retenida: no se le vuelve a cobrar
+  /// hasta que el comprador registre otra.
+  tarjetaInvalida       Boolean  @default(false)
   fechaRegistro         DateTime @default(now())
   planes                Plan[]
 }
@@ -206,6 +214,8 @@ model Comprador {
 enum EstadoPlan {
   COTIZADO
   ACTIVO
+  /// Por exhibiciones vencidas o por una disputa abierta (lib/motor/suspension.ts).
+  SUSPENDIDO
   LIQUIDADO
   CANCELADO
 }
@@ -221,28 +231,31 @@ enum ModalidadPlan {
 }
 
 model Plan {
-  id                 String         @id @default(cuid())
-  comprador          Comprador      @relation(fields: [compradorId], references: [id])
+  id                 String           @id @default(cuid())
+  comprador          Comprador        @relation(fields: [compradorId], references: [id])
   compradorId        String
   /// Etiqueta, no la fuente de verdad: lo vendido son los renglones (spec §4).
-  paquete            Paquete        @relation(fields: [paqueteId], references: [id])
+  paquete            Paquete          @relation(fields: [paqueteId], references: [id])
   paqueteId          String
   /// El precio de conjunto que se usó. Sólo en modalidad PAQUETE.
-  precio             Precio?        @relation(fields: [precioId], references: [id], onDelete: Restrict)
+  precio             Precio?          @relation(fields: [precioId], references: [id], onDelete: Restrict)
   precioId           String?
-  modalidad          ModalidadPlan  @default(PAQUETE)
-  version            Int            @default(1)
+  modalidad          ModalidadPlan    @default(PAQUETE)
+  version            Int              @default(1)
   /// R2: el precio se congela con el anticipo, no con la cotización.
   /// Null mientras el plan sea todavía una cotización.
   fechaCongelamiento DateTime?
-  montoCongelado     Decimal        @db.Decimal(12, 2)
-  saldo              Decimal        @db.Decimal(12, 2)
-  estado             EstadoPlan     @default(COTIZADO)
+  montoCongelado     Decimal          @db.Decimal(12, 2)
+  saldo              Decimal          @db.Decimal(12, 2)
+  estado             EstadoPlan       @default(COTIZADO)
   renglones          RenglonPlan[]
   exhibiciones       Exhibicion[]
   pagos              Pago[]
+  reembolsos         Reembolso[]
+  disputas           Disputa[]
+  cargosExcedentes   CargoExcedente[]
   intentosCobro      IntentoCobro[]
-  createdAt          DateTime       @default(now())
+  createdAt          DateTime         @default(now())
 }
 
 enum OrigenRenglon {
@@ -306,42 +319,139 @@ enum EstadoExhibicion {
 }
 
 model Exhibicion {
-  id                 String           @id @default(cuid())
-  plan               Plan             @relation(fields: [planId], references: [id])
-  planId             String
+  id                   String           @id @default(cuid())
+  plan                 Plan             @relation(fields: [planId], references: [id])
+  planId               String
   /// 0 = anticipo, 1..12 = mensualidades.
-  numero             Int
-  fechaProgramada    DateTime
-  monto              Decimal          @db.Decimal(12, 2)
-  estado             EstadoExhibicion @default(PENDIENTE)
+  numero               Int
+  fechaProgramada      DateTime
+  monto                Decimal          @db.Decimal(12, 2)
+  estado               EstadoExhibicion @default(PENDIENTE)
   /// Cuántos cobros rechazó el banco. El siguiente intento es este + 1 y va
   /// en la llave de idempotencia (D-13). Un cobro pendiente no lo sube.
-  intentosRechazados Int              @default(0)
-  pago               Pago?
-  intentosCobro      IntentoCobro[]
-  createdAt          DateTime         @default(now())
+  intentosRechazados   Int              @default(0)
+  /// Rechazos con la tarjeta actual; vuelve a 0 cuando el comprador registra
+  /// otra. Con esto se decide cuándo dejar de reintentar (lib/motor/reintentos.ts).
+  rechazosConTarjeta   Int              @default(0)
+  /// Tras un rechazo que se puede reintentar: desde cuándo el barrido vuelve
+  /// a cobrarla. Null = desde su fecha programada.
+  proximoIntentoEn     DateTime?
+  /// El barrido ya no la cobra solo: hace falta otra tarjeta (rechazo que no
+  /// se reintenta o se agotaron los reintentos). Se limpia al guardar tarjeta.
+  requiereTarjetaNueva Boolean          @default(false)
+  /// Un cobro quedó pendiente (el banco lo procesa): el barrido no la toca
+  /// hasta que el webhook lo confirme o lo rechace.
+  cobroPendienteDesde  DateTime?
+  /// El cobro pendiente (en Stripe, el PaymentIntent): con captura manual es
+  /// el que se captura o se libera. Se limpia al pagarse o rechazarse.
+  referenciaPendiente  String?
+  /// Candado del barrido: mientras no pase esta hora, otro barrido no la toma.
+  bloqueadaHasta       DateTime?
+  /// El código del último rechazo (insufficient_funds, expired_card…), para
+  /// saber a qué se debe sin ir a la bitácora. Se limpia al pagarse.
+  ultimoCodigoRechazo  String?
+  pago                 Pago?
+  cargosExcedentes     CargoExcedente[]
+  intentosCobro        IntentoCobro[]
+  createdAt            DateTime         @default(now())
 
   @@unique([planId, numero])
+  @@index([estado, fechaProgramada])
 }
 
 /// R3: un cobro ejecutado no se edita ni se borra.
 model Pago {
-  id                    String     @id @default(cuid())
-  plan                  Plan       @relation(fields: [planId], references: [id])
-  planId                String
-  exhibicion            Exhibicion @relation(fields: [exhibicionId], references: [id])
-  exhibicionId          String     @unique
-  monto                 Decimal    @db.Decimal(12, 2)
-  fecha                 DateTime   @default(now())
-  referenciaStripe      String?
-  stripePaymentIntentId String?    @unique
-  stripeChargeId        String?
-  stripeAccountId       String?
-  estado                EstadoPago @default(CONFIRMADO)
+  id                     String      @id @default(cuid())
+  plan                   Plan        @relation(fields: [planId], references: [id])
+  planId                 String
+  exhibicion             Exhibicion  @relation(fields: [exhibicionId], references: [id])
+  exhibicionId           String      @unique
+  monto                  Decimal     @db.Decimal(12, 2)
+  fecha                  DateTime    @default(now())
+  referenciaStripe       String?
+  stripePaymentIntentId  String?     @unique
+  stripeChargeId         String?
+  stripeAccountId        String?
+  /// La comisión cobrada en Stripe (application_fee.created, asíncrono en
+  /// cargos directos). Referencias como ésta se llenan una vez; los montos no se tocan (R3).
+  stripeApplicationFeeId String?     @unique
+  /// No se usa para reembolsos ni disputas (R3): esos son registros nuevos.
+  estado                 EstadoPago  @default(CONFIRMADO)
   /// Se guarda el porcentaje aplicado, para que un cambio futuro no altere el histórico.
-  porcentajeComision    Decimal    @db.Decimal(5, 4)
-  montoComision         Decimal    @db.Decimal(12, 2)
-  createdAt             DateTime   @default(now())
+  porcentajeComision     Decimal     @db.Decimal(5, 4)
+  montoComision          Decimal     @db.Decimal(12, 2)
+  reembolsos             Reembolso[]
+  disputas               Disputa[]
+  createdAt              DateTime    @default(now())
+}
+
+enum OrigenReembolso {
+  /// Desde el back office de día uno (reembolsarPago).
+  BACK_OFFICE
+  /// Moretti lo hizo desde su propio Dashboard; nos enteramos por charge.refunded.
+  DASHBOARD_MORETTI
+  /// El banco le dio la razón al comprador: Stripe retiró el dinero.
+  DISPUTA_PERDIDA
+}
+
+/// R3: un reembolso es un movimiento nuevo; el pago original no se edita.
+model Reembolso {
+  id               String          @id @default(cuid())
+  pago             Pago            @relation(fields: [pagoId], references: [id])
+  pagoId           String
+  plan             Plan            @relation(fields: [planId], references: [id])
+  planId           String
+  monto            Decimal         @db.Decimal(12, 2)
+  origen           OrigenReembolso
+  /// re_… del reembolso, o dp_… de la disputa perdida. Único: un webhook repetido no duplica.
+  referenciaStripe String          @unique
+  /// Si se le devolvió la comisión al comprador (refund_application_fee). Null = no se sabe.
+  devolvioComision Boolean?
+  motivo           String?
+  usuario          String          @default("sistema")
+  fecha            DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+
+  @@index([planId])
+}
+
+enum EstadoDisputa {
+  ABIERTA
+  GANADA
+  PERDIDA
+  /// Cerrada sin ganar ni perder (aviso de investigación, aceptada…).
+  CERRADA
+}
+
+model Disputa {
+  id              String        @id @default(cuid())
+  pago            Pago          @relation(fields: [pagoId], references: [id])
+  pagoId          String
+  plan            Plan          @relation(fields: [planId], references: [id])
+  planId          String
+  stripeDisputeId String        @unique
+  monto           Decimal       @db.Decimal(12, 2)
+  /// El motivo que da el banco: fraudulent, product_not_received…
+  motivo          String
+  estado          EstadoDisputa @default(ABIERTA)
+  abiertaEn       DateTime      @default(now())
+  cerradaEn       DateTime?
+
+  @@index([planId, estado])
+}
+
+/// Un cargo confirmado en Stripe para una exhibición que ya estaba pagada.
+/// Stripe manda: el dinero entró y queda registrado aquí para devolverlo.
+model CargoExcedente {
+  id               String     @id @default(cuid())
+  exhibicion       Exhibicion @relation(fields: [exhibicionId], references: [id])
+  exhibicionId     String
+  plan             Plan       @relation(fields: [planId], references: [id])
+  planId           String
+  referenciaStripe String     @unique
+  /// Null si el aviso llegó sin monto (la pasarela falsa, una prueba).
+  montoCentavos    Int?
+  detectadoEn      DateTime   @default(now())
 }
 
 enum EstadoPago {

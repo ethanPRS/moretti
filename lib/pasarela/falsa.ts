@@ -1,10 +1,16 @@
 import {
   llaveIdempotencia,
+  llaveReembolso,
   type Pasarela,
   type PreparacionTarjeta,
+  type ReembolsoHecho,
   type ResultadoCobro,
+  type SolicitudAutorizacion,
   type SolicitudCobro,
+  type SolicitudConfirmarTarjeta,
+  type SolicitudReembolso,
   type SolicitudTarjeta,
+  type TarjetaConfirmada,
 } from "./contrato";
 
 /**
@@ -21,6 +27,8 @@ export type PasarelaFalsa = Pasarela & {
   readonly cargos: ReadonlyArray<{ llave: string; solicitud: SolicitudCobro }>;
   /** Cuántas veces se llamó `cobrar`, contando repeticiones de la misma llave. */
   readonly llamadas: number;
+  /** Los reembolsos que sí se hicieron, uno por llave. */
+  readonly reembolsos: ReadonlyArray<{ llave: string; solicitud: SolicitudReembolso }>;
 };
 
 export function crearPasarelaFalsa(opciones?: {
@@ -28,6 +36,7 @@ export function crearPasarelaFalsa(opciones?: {
 }): PasarelaFalsa {
   const respuestas = new Map<string, { solicitud: SolicitudCobro; resultado: ResultadoCobro }>();
   const cargos: { llave: string; solicitud: SolicitudCobro }[] = [];
+  const reembolsos = new Map<string, { llave: string; solicitud: SolicitudReembolso }>();
   let llamadas = 0;
 
   return {
@@ -36,6 +45,9 @@ export function crearPasarelaFalsa(opciones?: {
     },
     get llamadas() {
       return llamadas;
+    },
+    get reembolsos() {
+      return [...reembolsos.values()];
     },
 
     async cobrar(solicitud: SolicitudCobro): Promise<ResultadoCobro> {
@@ -67,6 +79,23 @@ export function crearPasarelaFalsa(opciones?: {
     async prepararTarjeta(solicitud: SolicitudTarjeta): Promise<PreparacionTarjeta> {
       return { clientSecret: `falso_seti_${solicitud.compradorId}_secret` };
     },
+
+    async confirmarTarjeta(solicitud: SolicitudConfirmarTarjeta): Promise<TarjetaConfirmada> {
+      return { referenciaTarjeta: `falso_pm_${solicitud.compradorId}`, descripcion: "tarjeta de prueba 4242" };
+    },
+
+    async reembolsar(solicitud: SolicitudReembolso): Promise<ReembolsoHecho> {
+      const llave = llaveReembolso(solicitud);
+      if (!reembolsos.has(llave)) reembolsos.set(llave, { llave, solicitud });
+      const hecho = reembolsos.get(llave)!.solicitud;
+      return { referenciaReembolso: `falso_re_${llave}`, montoCentavos: hecho.montoCentavos };
+    },
+
+    async capturar(solicitud: SolicitudAutorizacion): Promise<ResultadoCobro> {
+      return { estado: "exitoso", referenciaPasarela: solicitud.referenciaPasarela };
+    },
+
+    async liberar(): Promise<void> {},
   };
 }
 

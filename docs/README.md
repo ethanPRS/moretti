@@ -12,6 +12,7 @@ arriba de `prototipo/`). Esto es lo que está escrito aquí, dentro del repo.
 | [`modelo-de-datos.md`](modelo-de-datos.md) | Tablas, invariantes, migraciones y eventos de la bitácora. |
 | [`parametros.md`](parametros.md) | Registro de parámetros: dónde vive cada uno y quién lo decide. |
 | [`contrato-pasarela.md`](contrato-pasarela.md) | El contrato entre el motor (Ethan) y la pasarela (Charly). |
+| [`integracion-stripe.md`](integracion-stripe.md) | Cómo cobra con Stripe: flujo, barrido, reintentos, Dashboard, tarjetas de prueba. |
 | [`pruebas.md`](pruebas.md) | Cómo se corren las pruebas y qué cubre cada archivo. |
 
 ## Por sprint

@@ -56,6 +56,31 @@ function llaveIdempotencia({ planId, numeroExhibicion, intento }): string
 La llave de idempotencia ya llevaba el número de intento desde el cambio del
 25 de septiembre (criterio 2 de S1-01): se conserva igual.
 
+## Versión 2.1 · 5 de octubre (Charly) · por ratificar con Ethan
+
+Sólo agrega; nada de la v2 cambia ni se rompe.
+
+| # | Cambio | Por qué |
+|---|---|---|
+| 7 | `pendiente` puede traer `accion: { clientSecret, cuentaConectada }`. El motor la pasa tal cual en su `ResultadoCobroMotor` y las rutas de cobro la devuelven con el 202. | Con el comprador presente, si el banco pide 3DS al cobrar el anticipo, alguien tiene que autenticarse. Sin esto el PaymentIntent se queda en `requires_action` para siempre: la llave es la misma y ningún reintento lo destraba. |
+| 8 | Método `confirmarTarjeta({ compradorId, referenciaPreparacion }) → { referenciaTarjeta, descripcion }`. | El navegador termina la captura (SetupIntent) y manda el id; el servidor verifica con Stripe que sí quedó guardada y es de ese comprador antes de registrarla. El navegador no es fuente de verdad. El webhook `setup_intent.succeeded` hace lo mismo por si esa llamada no llega. |
+| 9 | Una `ReglaError` lanzada por la pasarela (sin tarjeta, sin `acct_` en el proyecto) la deja pasar el motor tal cual, sin anotar `cobro_sin_respuesta`. | No se llegó a cobrar: el mensaje dice qué falta. Antes se reportaba como «la pasarela no respondió». |
+
+## Versión 2.2 · 7 de octubre (Charly) · por ratificar con Ethan
+
+Sólo agrega.
+
+| # | Cambio | Por qué |
+|---|---|---|
+| 10 | `rechazado` puede traer `consejo` (el `advice_code` del banco). | Si el banco dice que no se reintente, el motor lo respeta. |
+| 11 | `reintentar` queda **informativo**: qué hacer con cada rechazo lo decide el motor por código (`lib/motor/rechazos.ts`). | Una regla por código (D-23). |
+| 12 | `TarjetaConfirmada` trae `venceMes` y `venceAnio`. | Para saber cuándo vence y para `payment_method.automatically_updated`. |
+| 13 | Métodos `reembolsar` (con `devolverComision` obligatorio y llave `llaveReembolso()`), `capturar` y `liberar`. | Reembolsos desde el back office y anticipo con captura manual. |
+
+Qué pasarela se usa (`lib/pasarela/index.ts`): Stripe si hay `STRIPE_SECRET_KEY`
+de prueba (`sk_test_`); si no, la falsa. Llaves de producción no se aceptan
+todavía.
+
 ## Reglas para las dos mitades
 
 - **Nadie importa `./falsa` o `./stripe` directamente** desde el código de la

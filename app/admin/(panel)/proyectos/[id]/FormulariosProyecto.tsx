@@ -15,6 +15,7 @@ export type DatosProyecto = {
   minimoPlan: number;
   fechaEntregaUnidades: string | null;
   imagen: string | null;
+  stripeConnectedAccountId: string | null;
 };
 
 type Paso = "prototipos" | "unidades" | "precios" | "datos";
@@ -276,6 +277,7 @@ export default function FormulariosProyecto({
                 minimoPlan: f.get("minimoPlan"),
                 fechaEntregaUnidades: f.get("fechaEntregaUnidades") || null,
                 imagen: f.get("imagen") || null,
+                stripeConnectedAccountId: f.get("stripeConnectedAccountId") || null,
               },
               null,
               "PATCH",
@@ -314,6 +316,20 @@ export default function FormulariosProyecto({
           <p className="ayuda -mt-2">
             Cambiar el anticipo, la comisión o el mínimo sólo afecta planes nuevos: los apartados conservan sus condiciones.
           </p>
+          <div className="field">
+            <label htmlFor="p-cuenta">Cuenta de Stripe de Moretti (Connect)</label>
+            <input
+              id="p-cuenta"
+              name="stripeConnectedAccountId"
+              placeholder="acct_…"
+              pattern="acct_[A-Za-z0-9]+"
+              defaultValue={datos.stripeConnectedAccountId ?? ""}
+              className="font-mono"
+            />
+            <p className="ayuda">
+              Ahí cae el cobro de este proyecto y día uno se queda la comisión. Sin ella no se cobra con Stripe.
+            </p>
+          </div>
           <SubirImagen name="imagen" inicial={datos.imagen} etiqueta="Foto del proyecto" />
           <button className="btn self-start" disabled={guardando}>{guardando ? "Guardando…" : "Guardar cambios"}</button>
         </form>

@@ -1,233 +1,55 @@
-"use client";
-
-import { FormEvent, useState } from "react";
-import { CardElement, Elements, useElements, useStripe } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import { Money, PageHead } from "@/components/ui";
-
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
-const stripePromise = publishableKey.startsWith("pk_test_")
-  ? loadStripe(publishableKey)
-  : null;
+import { PageHead } from "@/components/ui";
 
 export default function PruebaPagosPage() {
+  const tieneLlavePublica =
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") ?? false;
+  const tieneLlaveSecreta = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
+  const tieneWebhook = Boolean(process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET_CONNECT);
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <PageHead
         eyebrow="Stripe · ambiente de pruebas"
-        titulo="Cobrar un anticipo"
-        descripcion="Confirma un PaymentIntent de Stripe en modo sandbox. No se realizará ningún cargo real."
+        titulo="Prueba desde un plan"
+        descripcion="El anticipo se cobra desde el detalle de un plan con contrato firmado, a la cuenta conectada de su proyecto."
+        accion={<span className="chip info">Sólo modo prueba</span>}
       />
 
-      {!stripePromise ? (
-        <div className="note blocked" role="alert">
-          Configura una llave publicable de Stripe de prueba en
-          <code className="mx-1 font-mono text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>
-          . Debe comenzar con <code className="font-mono text-xs">pk_test_</code>.
-        </div>
+      {!tieneLlavePublica || !tieneLlaveSecreta ? (
+        <p className="note blocked" role="status">
+          Configuración pendiente: añade una llave publicable <code>pk_test_</code> y una llave
+          secreta <code>sk_test_</code>. Sin ellas el motor cobra con la pasarela falsa.
+        </p>
       ) : (
-        <Elements stripe={stripePromise}>
-          <CheckoutForm />
-        </Elements>
+        <p className="note" role="status">
+          Llaves de prueba detectadas: el motor cobra con Stripe. No se crean cobros sueltos ni importes
+          de demostración; cobra el anticipo desde el detalle de un plan con contrato firmado.
+        </p>
       )}
-    </div>
-  );
-}
 
-function CheckoutForm() {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [email, setEmail] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isPaid, setIsPaid] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState("");
-  const [error, setError] = useState("");
+      {!tieneWebhook && (
+        <p className="note blocked" role="status">
+          Falta la firma del webhook (<code>STRIPE_WEBHOOK_SECRET</code>). Sin ella, un cobro que pide
+          autenticación nunca se aplica.
+        </p>
+      )}
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-
-    if (!stripe || !elements) {
-      setError("Stripe todavía está cargando. Inténtalo de nuevo en un momento.");
-      return;
-    }
-
-    if (!email) {
-      setError("Escribe un correo para recibir el comprobante de prueba.");
-      return;
-    }
-
-    const card = elements.getElement(CardElement);
-    if (!card) {
-      setError("No se pudo cargar el formulario seguro de tarjeta.");
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const response = await fetch("/api/stripe/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = (await response.json()) as { clientSecret?: string; error?: string };
-
-      if (!response.ok || !data.clientSecret) {
-        throw new Error(data.error ?? "No se pudo preparar el pago de prueba.");
-      }
-
-      const result = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: {
-          card,
-          billing_details: { email },
-        },
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message ?? "Stripe rechazó el pago de prueba.");
-      }
-
-      if (result.paymentIntent?.status !== "succeeded") {
-        throw new Error("El pago no terminó correctamente.");
-      }
-
-      setPaymentIntentId(result.paymentIntent.id);
-      setIsPaid(true);
-    } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : "No se pudo confirmar el pago.");
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  function resetPayment() {
-    setEmail("");
-    setIsPaid(false);
-    setPaymentIntentId("");
-    setError("");
-    elements?.getElement(CardElement)?.clear();
-  }
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-      <section className="card p-6 sm:p-8" aria-labelledby="checkout-title">
-        {isPaid ? (
-          <div className="flex flex-col gap-5 py-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-xl text-accent">
-              ✓
-            </div>
-            <div>
-              <p className="eyebrow">Pago aprobado por Stripe</p>
-              <h2 id="checkout-title" className="mt-2 text-[28px]">
-                El anticipo está registrado
-              </h2>
-              <p className="mt-3 text-ink-2">La tarjeta de prueba fue confirmada en sandbox.</p>
-            </div>
-            <div className="border-t border-line pt-4 text-sm text-ink-2">
-              <div className="flex justify-between gap-4">
-                <span>PaymentIntent</span>
-                <span className="max-w-[220px] truncate font-mono text-xs text-ink">
-                  {paymentIntentId}
-                </span>
-              </div>
-              <div className="mt-2 flex justify-between gap-4">
-                <span>Importe</span>
-                <strong className="text-ink">
-                  <Money valor={12500} conCentavos />
-                </strong>
-              </div>
-            </div>
-            <button type="button" className="btn btn-ghost self-start" onClick={resetPayment}>
-              Simular otro pago
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="flex items-start justify-between gap-4 border-b border-line pb-5">
-              <div>
-                <p className="label">Método de pago</p>
-                <h2 id="checkout-title" className="mt-1 text-[24px]">
-                  Tarjeta de crédito o débito
-                </h2>
-              </div>
-              <span className="rounded-full bg-surface-2 px-3 py-1 font-mono text-[11px] text-muted">
-                TEST
-              </span>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-5">
-              <div className="field">
-                <label htmlFor="card-element">Datos de tarjeta</label>
-                <div className="rounded-[var(--r-input)] border border-line-2 bg-surface px-3.5 py-[13px]">
-                  <CardElement
-                    id="card-element"
-                    options={{
-                      style: {
-                        base: {
-                          color: "#23211e",
-                          fontFamily: "Poppins, Helvetica Neue, Arial, sans-serif",
-                          fontSize: "15px",
-                          "::placeholder": { color: "#807a72" },
-                        },
-                        invalid: { color: "#b4643c" },
-                      },
-                    }}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-muted">
-                  Tarjeta de prueba: 4242 4242 4242 4242 · cualquier fecha futura · CVC 123
-                </p>
-              </div>
-
-              <div className="field">
-                <label htmlFor="email">Correo para el recibo</label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="nombre@ejemplo.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p className="mt-5 rounded-[var(--r-input)] bg-warm-soft px-4 py-3 text-sm text-warm" role="alert">
-                {error}
-              </p>
-            )}
-
-            <button type="submit" className="btn btn-warm mt-6 w-full" disabled={isProcessing || !stripe}>
-              {isProcessing ? "Confirmando con Stripe..." : "Pagar anticipo"}
-            </button>
-            <p className="mt-4 text-center text-xs text-muted">
-              Stripe sandbox · no se realizará ningún cargo real
-            </p>
-          </form>
-        )}
-      </section>
-
-      <aside className="card bg-surface-2 p-6" aria-label="Resumen del pago">
-        <p className="label">Resumen</p>
-        <div className="mt-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-[20px]">Plan Moretti 204</h2>
-            <p className="mt-1 text-sm text-ink-2">Anticipo de instalación</p>
-          </div>
-          <span className="chip info">1 de 13</span>
-        </div>
-        <div className="mt-7 border-t border-line-2 pt-5">
-          <div className="flex items-end justify-between gap-4">
-            <span className="text-sm text-ink-2">Total a pagar</span>
-            <strong className="figure text-[26px]">
-              <Money valor={12500} conCentavos />
-            </strong>
-          </div>
-          <p className="mt-2 text-right text-xs text-muted">MXN · IVA incluido</p>
-        </div>
-      </aside>
+      <div className="card flex flex-col gap-3 p-6 text-[14px] text-ink-2">
+        <p className="label">Cómo probar</p>
+        <ol className="flex list-decimal flex-col gap-1.5 pl-5">
+          <li>El proyecto necesita su cuenta conectada (<code>acct_…</code>) en Datos del proyecto.</li>
+          <li>
+            Para el webhook local: <code>stripe listen --forward-to localhost:3000/api/stripe/webhook
+            --forward-connect-to localhost:3000/api/stripe/webhook</code>.
+          </li>
+          <li>Aparta desde el sitio, firma, autoriza los cargos y captura la tarjeta.</li>
+          <li>
+            Tarjetas: <code>4242 4242 4242 4242</code> pasa · <code>4000 0025 0000 3155</code> pide
+            autenticación · <code>4000 0000 0000 9995</code> fondos insuficientes.
+          </li>
+          <li>Las mensualidades se cobran desde el estado de cuenta, a la tarjeta guardada.</li>
+        </ol>
+      </div>
     </div>
   );
 }

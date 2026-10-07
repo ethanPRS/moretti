@@ -43,11 +43,11 @@ todavía**; cuando lo haya, no pueden ser constantes.
 | Parámetro | Quién decide | Bloquea |
 |---|---|---|
 | ¿Se devuelve la comisión del canal al reembolsar? (`refund_application_fee`) | Contrato / abogado | U (Sprint 3) |
-| Cuántos reintentos y con qué espaciado | Operación | P (Sprint 2) |
-| Qué códigos de rechazo se reintentan | Operación | P (Sprint 2) |
-| ¿Anticipo capturado de inmediato o retenido? (`capture_method`) | Abogado + Moretti | Flujo del alta |
+| Reintentos por código de rechazo | Especificación / Operación | **En código**: tabla por código en `lib/motor/rechazos.ts`. Los de la especificación (insufficient_funds 3 y 7 días, generic_decline 2 días, perdida/robada/retenida inválida, vencida pide otra) van tal cual; el resto es propuesta por ratificar con Operación. Detalle en `integracion-stripe.md`. |
+| ¿Anticipo capturado de inmediato o retenido? (`capture_method`) | Abogado + Moretti | **Ya es parámetro**: `STRIPE_CAPTURE_METHOD` (`automatic` por defecto). Falta la decisión. |
 | Penalización por cancelación tardía (hoy 15 % de propuesta) | Contrato | Cancelaciones |
-| Exhibiciones vencidas que suspenden (hoy dos) | Contrato | S1-13 / Q |
+| Exhibiciones vencidas que suspenden (hoy dos) | Contrato | **Ya es parámetro**: `COBRANZA_VENCIDAS_SUSPENDEN` (2); suspende el **plan** (`lib/motor/suspension.ts`). |
+| ¿Se devuelve la comisión al reembolsar desde el back office? | Contrato | **Ya es parámetro explícito** de cada reembolso (`devolverComision`, obligatorio). |
 | Tolerancia de medida (hoy ±5 %) | Moretti | Mediciones |
 
 ## Encontrado al revisar: un parámetro que sigue en el código

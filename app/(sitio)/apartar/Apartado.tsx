@@ -6,16 +6,37 @@ import { calcularExhibicionesEnteras } from "@/lib/motor/enteros";
 import { cotizarEnCatalogo, esFinanciable, type Canasta, type PrototipoCotizable } from "@/lib/motor/canasta";
 import { ReglaError } from "@/lib/motor/errores";
 import { ContenidoBoton } from "@/components/Boton";
+import CobrarConStripe from "@/components/pagos/CobrarConStripe";
 
 const mx = (n: number) => "$" + n.toLocaleString("es-MX");
 
-type Paso = "datos" | "contrato" | "pago" | "listo";
+type Paso = "datos" | "contrato" | "pago";
 const PASOS: { id: Paso; texto: string }[] = [
   { id: "datos", texto: "Tus datos" },
   { id: "contrato", texto: "Contrato" },
   { id: "pago", texto: "Anticipo" },
-  { id: "listo", texto: "Apartado" },
 ];
+
+type ResumenServidor = {
+  proyecto: string;
+  prototipo: string;
+  torre: string;
+  unidad: string;
+  paquete: string;
+  total: number;
+  saldo: number;
+  partidas: { nombre: string; cantidad: number; importe: number }[];
+  exhibiciones: {
+    id: string;
+    numero: number;
+    monto: number;
+    fechaProgramada: string;
+    estado: string;
+  }[];
+};
+
+const fechaMX = (fecha: string) =>
+  new Date(fecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
 export default function Apartado({
   desarrollo,
@@ -23,12 +44,14 @@ export default function Apartado({
   paquete,
   canasta,
   unidades,
+  stripeTestConfigurado,
 }: {
   desarrollo: { id: string; nombre: string; anticipoBP: number; minimoPlan: number };
   prototipo: PrototipoCotizable;
   paquete: { id: string; nombre: string; armable: boolean };
   canasta?: Canasta;
   unidades: { id: string; torre: string; numero: string }[];
+  stripeTestConfigurado: boolean;
 }) {
   const [paso, setPaso] = useState<Paso>("datos");
   const [nombre, setNombre] = useState("");
@@ -36,8 +59,10 @@ export default function Apartado({
   const [unidadId, setUnidadId] = useState(unidades[0]?.id ?? "");
   const [acepta, setAcepta] = useState(false);
   const [firma, setFirma] = useState("");
-  const [planId, setPlanId] = useState<string | null>(null);
   const [folio, setFolio] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [pagado, setPagado] = useState(false);
+  const [resumenServidor, setResumenServidor] = useState<ResumenServidor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
@@ -88,33 +113,30 @@ export default function Apartado({
     e.preventDefault();
     setError(null);
     setCargando(true);
-    const res = await fetch("/api/apartar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, contacto, unidadId, paqueteId: paquete.id, canasta, firma, acepta }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setCargando(false);
-    if (!res.ok) return setError(data.error ?? "No se pudo firmar el contrato. Intenta de nuevo.");
-    setPlanId(data.planId);
-    setFolio(data.folio);
-    setPaso("pago");
-  }
-
-  async function pagar(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setCargando(true);
-    const res = await fetch("/api/apartar/anticipo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setCargando(false);
-    if (res.status === 202) return setError(data.mensaje ?? "Tu banco pidió confirmar el pago. Revisa tu app del banco.");
-    if (!res.ok) return setError(data.error ?? "No se pudo cobrar el anticipo. Intenta con otra tarjeta.");
-    setPaso("listo");
+    try {
+      const res = await fetch("/api/apartar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, contacto, unidadId, paqueteId: paquete.id, canasta, firma, acepta }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "No se pudo firmar el contrato. Intenta de nuevo.");
+        return;
+      }
+      if (!data.planId || !data.folio || !data.resumen?.exhibiciones?.length) {
+        setError("El servidor registró el contrato, pero no devolvió el calendario del plan. Contacta a Moretti antes de continuar.");
+        return;
+      }
+      setResumenServidor(data.resumen as ResumenServidor);
+      setFolio(data.folio);
+      setPlanId(data.planId);
+      setPaso("pago");
+    } catch {
+      setError("No hubo respuesta del servidor. Revisa tu conexión antes de volver a firmar.");
+    } finally {
+      setCargando(false);
+    }
   }
 
   const indice = PASOS.findIndex((p) => p.id === paso);
@@ -282,74 +304,69 @@ export default function Apartado({
             </form>
           )}
 
-          {paso === "pago" && (
-            <form onSubmit={pagar} className="flex flex-col gap-5">
+          {paso === "pago" && resumenServidor && planId && (
+            <div className="flex flex-col gap-5">
               <div>
                 <p className="eyebrow">Contrato firmado · folio {folio}</p>
-                <h1 className="mt-2 text-[28px]">Paga tu anticipo de {mx(anticipo)}.</h1>
+                <h1 className="mt-2 text-[28px]">
+                  {pagado ? "Tu departamento quedó apartado." : `Anticipo de ${mx(resumenServidor.exhibiciones[0].monto)}.`}
+                </h1>
                 <p className="mt-1.5 text-ink-2">
-                  Con este pago tu precio queda congelado. Guardamos la tarjeta para cargar tus
-                  mensualidades de {mx(mensualidad)}.
+                  {pagado
+                    ? "Las mensualidades se cargan a esta tarjeta en las fechas del calendario."
+                    : "Registra la tarjeta con la que pagas el anticipo y, después, las mensualidades. Stripe está en modo prueba: no se cobra dinero real."}
                 </p>
               </div>
-              {/* Simulación: estos datos no salen del navegador. Con Stripe, aquí va su Payment Element. */}
-              <div className="rounded-[var(--r-input)] border border-dashed border-line-2 p-5">
-                <p className="text-[12.5px] text-muted">
-                  Pago simulado: usa cualquier número, no se hace ningún cargo real.
-                </p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_120px_100px]">
-                  <div className="field">
-                    <label htmlFor="tarjeta">Número de tarjeta</label>
-                    <input id="tarjeta" inputMode="numeric" placeholder="4242 4242 4242 4242" autoComplete="off" required />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="vence">Vence</label>
-                    <input id="vence" placeholder="MM/AA" autoComplete="off" required />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cvc">CVC</label>
-                    <input id="cvc" inputMode="numeric" placeholder="123" autoComplete="off" required />
-                  </div>
-                </div>
-              </div>
-              {error && <p className="note blocked" role="alert">{error}</p>}
-              <button type="submit" className="btn self-start" disabled={cargando}>
-                <ContenidoBoton texto={cargando ? "Cobrando…" : `Pagar ${mx(anticipo)}`} flecha />
-              </button>
-            </form>
-          )}
-
-          {paso === "listo" && (
-            <div className="flex flex-col items-start gap-4">
-              <p className="eyebrow">Folio {folio}</p>
-              <h1 className="text-[32px]">Listo, tu paquete está apartado.</h1>
-              <p className="max-w-[52ch] text-ink-2">
-                Cobramos tu anticipo de {mx(anticipo)} y tu precio quedó congelado. Te mandamos el
-                contrato a {contacto}. Tu primera mensualidad de {mx(mensualidad)} se carga el
-                próximo mes.
-              </p>
-              <p className="max-w-[52ch] text-ink-2">
-                Te contactamos para agendar la visita al depa muestra y elegir tus acabados.
-              </p>
-              <Link href="/" className="btn btn-ghost mt-2">
-                <ContenidoBoton texto="Volver al inicio" />
-              </Link>
+              <CobrarConStripe
+                planId={planId}
+                exhibicionId={resumenServidor.exhibiciones[0].id}
+                bloqueado={false}
+                stripeTestConfigurado={stripeTestConfigurado}
+                tarjetaRegistrada={null}
+                onPagado={() => setPagado(true)}
+              />
             </div>
           )}
         </div>
 
         <aside className="card h-fit bg-surface-2 p-6">
           <p className="eyebrow">Tu apartado</p>
-          <p className="mt-2 text-[20px] font-semibold">{paquete.nombre}</p>
+          <p className="mt-2 text-[20px] font-semibold">{resumenServidor?.paquete ?? paquete.nombre}</p>
           <p className="text-[14px] text-muted">
-            {desarrollo.nombre} · {prototipo.clave}
-            {unidad ? ` · Torre ${unidad.torre}, Depa ${unidad.numero}` : ""}
+            {resumenServidor
+              ? `${resumenServidor.proyecto} · ${resumenServidor.prototipo} · Torre ${resumenServidor.torre}, Depa ${resumenServidor.unidad}`
+              : `${desarrollo.nombre} · ${prototipo.clave}${unidad ? ` · Torre ${unidad.torre}, Depa ${unidad.numero}` : ""}`}
           </p>
+          {resumenServidor && (
+            <ul className="mt-4 flex flex-col gap-1.5 border-t border-line-2 pt-4 text-[13px] text-ink-2">
+              {resumenServidor.partidas.map((partida, i) => (
+                <li key={`${partida.nombre}-${i}`} className="flex justify-between gap-3">
+                  <span>{partida.nombre}{partida.cantidad > 1 ? ` × ${partida.cantidad}` : ""}</span>
+                  <span className="tabular-nums">{mx(partida.importe)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <dl className="mt-5 flex flex-col gap-2 border-t border-line-2 pt-4 text-[14.5px]">
-            <div className="flex justify-between"><dt className="text-ink-2">Total</dt><dd className="font-semibold tabular-nums">{mx(cotizacion.total)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-2">Anticipo hoy</dt><dd className="tabular-nums">{mx(anticipo)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-2">12 mensualidades</dt><dd className="tabular-nums">{mx(mensualidad)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-2">Total</dt><dd className="font-semibold tabular-nums">{mx(resumenServidor?.total ?? cotizacion.total)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-2">Anticipo hoy</dt><dd className="tabular-nums">{mx(resumenServidor?.exhibiciones[0].monto ?? anticipo)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-2">Saldo</dt><dd className="tabular-nums">{mx(resumenServidor?.saldo ?? cotizacion.total - anticipo)}</dd></div>
           </dl>
+          {resumenServidor && (
+            <section className="mt-5 border-t border-line-2 pt-4" aria-labelledby="calendario-apartado">
+              <h2 id="calendario-apartado" className="label">Calendario del servidor</h2>
+              <ol className="mt-3 flex max-h-64 flex-col gap-2 overflow-y-auto text-[13px]">
+                {resumenServidor.exhibiciones.map((exhibicion) => (
+                  <li key={exhibicion.id} className="flex justify-between gap-3">
+                    <span className="text-ink-2">
+                      {exhibicion.numero === 0 ? "Anticipo" : `Mensualidad ${exhibicion.numero}`} · {fechaMX(exhibicion.fechaProgramada)}
+                    </span>
+                    <span className="shrink-0 tabular-nums">{mx(exhibicion.monto)}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
           {paso === "datos" && (
             <Link href="/cotizar" className="mt-5 inline-block text-[13.5px] text-accent hover:underline">
               Cambiar paquete

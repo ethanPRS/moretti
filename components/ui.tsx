@@ -66,6 +66,7 @@ export function ChipEstadoFinanciero({ estado }: { estado: EstadoFinanciero }) {
 const ETIQUETA_PLAN: Record<EstadoPlan, { texto: string; clase: string }> = {
   COTIZADO: { texto: "Cotización", clase: "wait" },
   ACTIVO: { texto: "Activo", clase: "ok" },
+  SUSPENDIDO: { texto: "Suspendido", clase: "late" },
   LIQUIDADO: { texto: "Liquidado", clase: "ok" },
   CANCELADO: { texto: "Cancelado", clase: "late" },
 };

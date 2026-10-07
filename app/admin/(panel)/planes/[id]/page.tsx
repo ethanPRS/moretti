@@ -10,7 +10,8 @@ import {
   ChipEstadoPlan,
   CintaExhibiciones,
 } from "@/components/ui";
-import CobrarButton from "./CobrarButton";
+import CobrarConStripe from "./CobrarConStripe";
+import CobrarMensualidad from "./CobrarMensualidad";
 import ContratoForm from "./ContratoForm";
 import AcabadoYFotos from "./AcabadoYFotos";
 import EstadoFinancieroForm from "./EstadoFinancieroForm";
@@ -76,6 +77,12 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   );
   const congelado = Boolean(plan.fechaCongelamiento);
   const siguiente = plan.exhibiciones.find((e) => e.estado !== EstadoExhibicion.PAGADA);
+  const cobrable = plan.estado !== EstadoPlan.LIQUIDADO && plan.estado !== EstadoPlan.CANCELADO;
+  // Sin llaves de prueba el motor usa la pasarela falsa (lib/pasarela/index.ts).
+  const stripeTestConfigurado =
+    process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true;
+  const tarjetaRegistrada = Boolean(plan.comprador.stripePaymentMethodId);
 
   return (
     <div className="flex flex-col gap-9">
@@ -189,12 +196,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={4} className="font-medium">
+                <td colSpan={3} className="font-medium">
                   Total {cuadra ? "· cuadra al peso con el plan (R7)" : "· NO cuadra con el plan"}
                 </td>
                 <td className={`r font-semibold ${cuadra ? "" : "text-warm"}`}>
                   <Money valor={sumaRenglones} />
                 </td>
+                <td colSpan={4} />
               </tr>
             </tfoot>
           </table>
@@ -258,6 +266,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               <th className="r">Monto</th>
               <th className="r">Comisión</th>
               <th className="r">Estado</th>
+              <th>Referencia</th>
               <th className="r" />
             </tr>
           </thead>
@@ -282,13 +291,26 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                     <span className="chip wait">Programada</span>
                   )}
                 </td>
+                <td className="font-mono text-[11px] text-muted">
+                  {ex.pago?.referenciaStripe ?? "—"}
+                </td>
                 <td className="r">
-                  {siguiente?.id === ex.id && plan.estado !== EstadoPlan.LIQUIDADO && (
-                    <CobrarButton
-                      exhibicionId={ex.id}
-                      esAnticipo={ex.numero === 0}
-                      bloqueado={ex.numero === 0 && !contrato}
-                    />
+                  {siguiente?.id === ex.id && cobrable && (
+                    ex.numero === 0 ? (
+                      <CobrarConStripe
+                        planId={plan.id}
+                        exhibicionId={ex.id}
+                        bloqueado={!contrato}
+                        stripeTestConfigurado={stripeTestConfigurado}
+                        tarjetaRegistrada={tarjetaRegistrada ? "tarjeta registrada" : null}
+                      />
+                    ) : tarjetaRegistrada || !stripeTestConfigurado ? (
+                      <CobrarMensualidad exhibicionId={ex.id} numero={ex.numero} />
+                    ) : (
+                      <span className="text-xs text-muted">
+                        El comprador no tiene tarjeta registrada para las mensualidades.
+                      </span>
+                    )
                   )}
                 </td>
               </tr>

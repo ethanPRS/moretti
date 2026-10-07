@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
           test: {
             name: "unitarias",
             include: ["**/*.test.ts"],
-            exclude: ["**/*.int.test.ts", "node_modules/**", ".next/**"],
+            exclude: ["**/*.int.test.ts", "**/*.stripe.test.ts", "node_modules/**", ".next/**"],
           },
         },
         {
@@ -47,6 +47,25 @@ export default defineConfig(({ mode }) => {
             env: { DATABASE_URL: urlPruebas },
             fileParallelism: false,
             testTimeout: 30_000,
+            hookTimeout: 60_000,
+          },
+        },
+        {
+          // De extremo a extremo contra el modo prueba de Stripe (npm run test:stripe).
+          // Fuera de `npm test`: necesita red, llaves de prueba y una cuenta conectada.
+          extends: true,
+          test: {
+            name: "stripe",
+            include: ["**/*.stripe.test.ts"],
+            exclude: ["node_modules/**", ".next/**"],
+            globalSetup: ["./pruebas/preparar-base.ts"],
+            env: {
+              DATABASE_URL: urlPruebas,
+              STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY ?? "",
+              STRIPE_E2E_CUENTA: env.STRIPE_E2E_CUENTA ?? "",
+            },
+            fileParallelism: false,
+            testTimeout: 60_000,
             hookTimeout: 60_000,
           },
         },

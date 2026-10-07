@@ -5,11 +5,14 @@ import {
   EstadoFinanciero,
   ModalidadPlan,
   OrigenRenglon,
-  EstadoIntentoCobro,
-  EstadoPago,
 } from "@prisma/client";
 import { prisma } from "../prisma";
-import { pasarela as pasarelaPorDefecto, type Pasarela, type SolicitudCobro } from "../pasarela";
+import {
+  pasarela as pasarelaPorDefecto,
+  type AccionComprador,
+  type Pasarela,
+  type SolicitudCobro,
+} from "../pasarela";
 import { calcularExhibiciones } from "./calculo";
 import {
   avisoPerdidaPaquete,
@@ -30,6 +33,8 @@ import {
   puedeTransitar,
 } from "./estados";
 import { explicarRechazo } from "./rechazos";
+import { decidirTrasRechazo } from "./reintentos";
+import { evaluarSuspension } from "./suspension";
 
 const { Decimal } = Prisma;
 
@@ -44,17 +49,6 @@ export class PasarelaError extends Error {
 }
 
 type Tx = Prisma.TransactionClient;
-
-export type IntentoCobroPreparado = {
-  id: string;
-  planId: string;
-  exhibicionId: string;
-  monto: Prisma.Decimal;
-  porcentajeComision: Prisma.Decimal;
-  montoComision: Prisma.Decimal;
-  idempotencyKey: string;
-  stripeAccountId: string;
-};
 
 function fechaMasMeses(base: Date, meses: number) {
   const d = new Date(base);
@@ -170,7 +164,7 @@ export async function generarPlan(params: { compradorId: string } & Eleccion) {
     where: { id: params.compradorId },
     include: {
       unidad: true,
-      planes: { where: { estado: { in: [EstadoPlan.COTIZADO, EstadoPlan.ACTIVO] } } },
+      planes: { where: { estado: { in: [EstadoPlan.COTIZADO, EstadoPlan.ACTIVO, EstadoPlan.SUSPENDIDO] } } },
     },
   });
   if (!comprador) throw new ReglaError("No se encontró al comprador.");
@@ -266,7 +260,7 @@ function asegurarR7(c: Cotizacion, exhibiciones: ReturnType<typeof calcularExhib
 
 export type ResultadoCobroMotor =
   | { estado: "exitoso"; referencia: string }
-  | { estado: "pendiente"; referencia: string; mensaje: string }
+  | { estado: "pendiente"; referencia: string; mensaje: string; accion?: AccionComprador }
   | { estado: "rechazado"; codigo: string; mensaje: string; intento: number };
 
 type Opciones = { pasarela?: Pasarela };
@@ -382,10 +376,25 @@ async function ejecutarCobro(p: {
     compradorPresente: exhibicion.numero === 0,
   };
 
+  if (!solicitud.compradorPresente) {
+    const comprador = await prisma.comprador.findUnique({
+      where: { id: p.compradorId },
+      select: { tarjetaInvalida: true },
+    });
+    if (comprador?.tarjetaInvalida) {
+      throw new ReglaError(
+        "La tarjeta del comprador quedó marcada como inválida (el banco la reportó perdida, robada o retenida). Pídele que registre otra antes de cobrar."
+      );
+    }
+  }
+
   let resultado;
   try {
     resultado = await p.pasarela.cobrar(solicitud);
   } catch (err) {
+    // Una regla que revisa la pasarela (sin tarjeta, sin cuenta de Moretti):
+    // no se llegó a cobrar y el mensaje dice qué falta.
+    if (err instanceof ReglaError) throw err;
     await prisma.evento.create({
       data: {
         entidadTipo: "plan",
@@ -411,6 +420,11 @@ async function ejecutarCobro(p: {
       return { estado: "exitoso", referencia: resultado.referenciaPasarela };
 
     case "pendiente":
+      // El barrido no la vuelve a cobrar mientras el webhook no diga en qué quedó.
+      await prisma.exhibicion.updateMany({
+        where: { id: exhibicion.id, estado: { not: EstadoExhibicion.PAGADA } },
+        data: { cobroPendienteDesde: new Date(), referenciaPendiente: resultado.referenciaPasarela },
+      });
       await prisma.evento.create({
         data: {
           entidadTipo: "plan",
@@ -423,21 +437,37 @@ async function ejecutarCobro(p: {
         estado: "pendiente",
         referencia: resultado.referenciaPasarela,
         mensaje: `El cobro quedó pendiente: ${resultado.motivo}. No se marcó como pagado; se aplica cuando el banco lo confirme.`,
+        ...(resultado.accion ? { accion: resultado.accion } : {}),
       };
 
-    case "rechazado":
+    case "rechazado": {
       await registrarCobroRechazado({
         exhibicionId: exhibicion.id,
         intento,
         codigo: resultado.codigoRechazo,
+        consejo: resultado.consejo,
       });
+      const despues = await prisma.exhibicion.findUniqueOrThrow({ where: { id: exhibicion.id } });
       return {
         estado: "rechazado",
         codigo: resultado.codigoRechazo,
         intento,
-        mensaje: `El banco rechazó el cobro: ${explicarRechazo(resultado.codigoRechazo)} (${resultado.codigoRechazo}). ${capitalizar(concepto)} sigue pendiente y el rechazo quedó en la bitácora.`,
+        mensaje: `El banco rechazó el cobro: ${explicarRechazo(resultado.codigoRechazo)} (${resultado.codigoRechazo}). ${capitalizar(concepto)} sigue pendiente y el rechazo quedó en la bitácora.${queSigue(despues)}`,
       };
+    }
   }
+}
+
+/** Lo que sigue después de un rechazo de mensualidad, para el mensaje del back office. */
+function queSigue(e: { numero: number; requiereTarjetaNueva: boolean; proximoIntentoEn: Date | null }) {
+  if (e.numero === 0) return "";
+  if (e.requiereTarjetaNueva) return " No se reintenta sola: hace falta que el comprador registre otra tarjeta.";
+  if (e.proximoIntentoEn) return ` Se reintenta sola a partir del ${fechaCorta(e.proximoIntentoEn)}.`;
+  return "";
+}
+
+function fechaCorta(d: Date) {
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**
@@ -445,22 +475,57 @@ async function ejecutarCobro(p: {
  * `payment_intent.succeeded` (S1-10) cuando el cobro había quedado pendiente.
  * Si ese pago ya estaba aplicado —porque la respuesta de `cobrar` llegó
  * primero, o Stripe reenvió el evento— no hace nada.
+ *
+ * La pasarela es la fuente de la verdad sobre el dinero: si el webhook trae
+ * lo que Stripe cobró de verdad (monto y comisión) y no coincide con la base,
+ * se registra lo de Stripe y queda una alerta en la bitácora.
  */
-export async function aplicarCobroConfirmado(params: { exhibicionId: string; referenciaPasarela: string }) {
+export async function aplicarCobroConfirmado(params: {
+  exhibicionId: string;
+  referenciaPasarela: string;
+  /** Lo que Stripe cobró (`amount`). */
+  montoCentavos?: number;
+  /** La comisión que Stripe cobró (`application_fee_amount`). */
+  comisionCentavos?: number | null;
+}) {
   const exhibicion = await prisma.exhibicion.findUnique({
     where: { id: params.exhibicionId },
     include: { plan: { include: { comprador: { include: { unidad: { include: { proyecto: true } } } } } } },
   });
   if (!exhibicion) throw new ReglaError("No se encontró la exhibición del cobro confirmado.");
-  const { porcentaje, comision } = comisionDe(
+  let { porcentaje, comision } = comisionDe(
     exhibicion.monto,
     exhibicion.plan.comprador.unidad.proyecto.porcentajeComision
   );
+  let monto = new Decimal(exhibicion.monto);
+  const alertas: string[] = [];
+
+  if (params.montoCentavos !== undefined) {
+    const deStripe = new Decimal(params.montoCentavos).div(100);
+    if (!deStripe.eq(monto)) {
+      alertas.push(`Stripe cobró ${mxc(deStripe.toNumber())} y la exhibición es de ${mxc(monto.toNumber())}`);
+      monto = deStripe;
+    }
+  }
+  if (params.comisionCentavos !== undefined && params.comisionCentavos !== null) {
+    const deStripe = new Decimal(params.comisionCentavos).div(100);
+    if (!deStripe.eq(comision)) {
+      alertas.push(
+        `la comisión cobrada en Stripe fue ${mxc(deStripe.toNumber())} y con el % actual del proyecto serían ${mxc(comision.toNumber())}`
+      );
+      comision = deStripe;
+      porcentaje = monto.gt(0) ? deStripe.div(monto).toDecimalPlaces(4, Decimal.ROUND_HALF_UP) : porcentaje;
+    }
+  }
+
   return aplicarPago({
     exhibicionId: exhibicion.id,
     referencia: params.referenciaPasarela,
     porcentaje,
     comision,
+    monto,
+    alertas,
+    montoCentavos: params.montoCentavos,
   });
 }
 
@@ -468,11 +533,20 @@ export async function aplicarCobroConfirmado(params: { exhibicionId: string; ref
  * Anota un rechazo y sube el contador de intentos, una sola vez por intento:
  * si el webhook de `payment_intent.payment_failed` llega después de que la
  * respuesta de `cobrar` ya lo anotó, no hace nada. Devuelve si lo anotó.
+ *
+ * En una mensualidad, además, decide qué sigue según el código (rechazos.ts y
+ * reintentos.ts): cuándo la vuelve a cobrar el barrido, si hace falta otra
+ * tarjeta o si la tarjeta queda inválida para todo el plan. Si ya pasó su
+ * fecha, queda VENCIDA, y con eso el plan se puede suspender (suspension.ts).
+ * El rechazo en sí no cambia el estado del plan. El anticipo no se reintenta
+ * solo: lo reintenta el comprador presente.
  */
 export async function registrarCobroRechazado(params: {
   exhibicionId: string;
   intento: number;
   codigo: string;
+  /** El consejo del banco (advice_code). Si dice que no se reintente, se respeta. */
+  consejo?: string | null;
 }): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.exhibicion.updateMany({
@@ -481,19 +555,101 @@ export async function registrarCobroRechazado(params: {
         intentosRechazados: params.intento - 1,
         estado: { not: EstadoExhibicion.PAGADA },
       },
-      data: { intentosRechazados: params.intento },
+      data: {
+        intentosRechazados: params.intento,
+        cobroPendienteDesde: null,
+        referenciaPendiente: null,
+        ultimoCodigoRechazo: params.codigo,
+      },
     });
     if (count === 0) return false;
 
-    const exhibicion = await tx.exhibicion.findUniqueOrThrow({ where: { id: params.exhibicionId } });
+    const exhibicion = await tx.exhibicion.findUniqueOrThrow({
+      where: { id: params.exhibicionId },
+      include: { plan: { select: { compradorId: true } } },
+    });
+    let queSigue = "La exhibición sigue pendiente; el siguiente intento va con llave nueva.";
+    let vencio = false;
+
+    if (exhibicion.numero > 0) {
+      const ahora = new Date();
+      const rechazos = exhibicion.rechazosConTarjeta + 1;
+      const decision = decidirTrasRechazo({
+        codigo: params.codigo,
+        consejo: params.consejo,
+        rechazosConTarjeta: rechazos,
+        ahora,
+      });
+      vencio = exhibicion.estado !== EstadoExhibicion.VENCIDA && exhibicion.fechaProgramada <= ahora;
+      await tx.exhibicion.update({
+        where: { id: exhibicion.id },
+        data: {
+          rechazosConTarjeta: rechazos,
+          ...(vencio ? { estado: EstadoExhibicion.VENCIDA } : {}),
+          ...(decision.tipo === "reintentar"
+            ? { proximoIntentoEn: decision.en, requiereTarjetaNueva: false }
+            : { proximoIntentoEn: null, requiereTarjetaNueva: true }),
+        },
+      });
+      if (decision.tipo === "tarjeta_invalida") {
+        await tx.comprador.update({
+          where: { id: exhibicion.plan.compradorId },
+          data: { tarjetaInvalida: true },
+        });
+      }
+      queSigue =
+        decision.tipo === "reintentar"
+          ? `Se reintenta sola a partir del ${fechaCorta(decision.en)} (reintento ${decision.numero} de ${decision.de} por este motivo), con llave nueva.`
+          : decision.tipo === "tarjeta_invalida"
+            ? `No se reintenta: ${decision.motivo}. La tarjeta quedó marcada como inválida para todo el plan hasta que el comprador registre otra.`
+            : `No se reintenta sola: ${decision.motivo}. Hay que pedirle al comprador que registre otra tarjeta.`;
+      if (vencio) queSigue += ` La mensualidad ${exhibicion.numero} quedó vencida.`;
+    }
+
     await tx.evento.create({
       data: {
         entidadTipo: "plan",
         entidadId: exhibicion.planId,
         tipo: "cobro_rechazado",
-        comentario: `El banco rechazó ${conceptoDe(exhibicion.numero)} por ${mx(new Decimal(exhibicion.monto).toNumber())} (intento ${params.intento}): ${params.codigo}, ${explicarRechazo(params.codigo)}. La exhibición sigue pendiente; el siguiente intento va con llave nueva.`,
+        comentario: `El banco rechazó ${conceptoDe(exhibicion.numero)} por ${mx(new Decimal(exhibicion.monto).toNumber())} (intento ${params.intento}): ${params.codigo}, ${explicarRechazo(params.codigo)}.${params.consejo ? ` Consejo del banco: ${params.consejo}.` : ""} ${queSigue}`,
       },
     });
+    if (vencio) {
+      await evaluarSuspension(tx, exhibicion.planId, `la mensualidad ${exhibicion.numero} se venció sin cobrarse`);
+    }
+    return true;
+  });
+}
+
+/**
+ * Marca VENCIDA una mensualidad que llegó a su fecha y no se pudo cobrar sin
+ * que el banco la rechazara (sin tarjeta, pasarela caída). Con bitácora y
+ * revisando la suspensión. Devuelve si la marcó.
+ */
+export async function marcarVencida(params: { exhibicionId: string; ahora: Date; porque: string }): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const { count } = await tx.exhibicion.updateMany({
+      where: {
+        id: params.exhibicionId,
+        numero: { gt: 0 },
+        estado: EstadoExhibicion.PENDIENTE,
+        fechaProgramada: { lt: params.ahora },
+      },
+      data: { estado: EstadoExhibicion.VENCIDA },
+    });
+    if (count === 0) return false;
+    const exhibicion = await tx.exhibicion.findUniqueOrThrow({ where: { id: params.exhibicionId } });
+    await tx.evento.create({
+      data: {
+        entidadTipo: "plan",
+        entidadId: exhibicion.planId,
+        tipo: "exhibicion_vencida",
+        estadoAnterior: EstadoExhibicion.PENDIENTE,
+        estadoNuevo: EstadoExhibicion.VENCIDA,
+        comentario: `La mensualidad ${exhibicion.numero} llegó a su fecha y no se pudo cobrar: ${params.porque}.`,
+      },
+    });
+    await evaluarSuspension(tx, exhibicion.planId, `la mensualidad ${exhibicion.numero} se venció sin cobrarse`);
     return true;
   });
 }
@@ -505,6 +661,12 @@ async function aplicarPago(p: {
   referencia: string;
   porcentaje: Prisma.Decimal;
   comision: Prisma.Decimal;
+  /** Lo que cobró Stripe, si difiere de la exhibición. Manda Stripe. */
+  monto?: Prisma.Decimal;
+  /** Diferencias con Stripe que quedan como alerta en la bitácora. */
+  alertas?: string[];
+  /** Para registrar un cargo excedente con su monto. */
+  montoCentavos?: number;
 }): Promise<ResultadoAplicacion> {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -515,10 +677,12 @@ async function aplicarPago(p: {
           plan: { include: { comprador: { include: { unidad: true } }, renglones: true } },
         },
       });
-      if (exhibicion.pago) return await compararReferencia(tx, exhibicion.pago, p.referencia, exhibicion);
+      if (exhibicion.pago) {
+        return await compararReferencia(tx, exhibicion.pago, p.referencia, exhibicion, p.montoCentavos);
+      }
 
       const { plan } = exhibicion;
-      const monto = new Decimal(exhibicion.monto);
+      const monto = new Decimal(p.monto ?? exhibicion.monto);
       const esAnticipo = exhibicion.numero === 0;
       const saldo = new Decimal(plan.saldo).sub(monto);
       const liquidado = saldo.lte(0);
@@ -534,25 +698,40 @@ async function aplicarPago(p: {
           monto,
           fecha: ahora,
           referenciaStripe: p.referencia,
+          // Sólo los de Stripe: la pasarela falsa manda referencias propias.
+          ...(p.referencia.startsWith("pi_") ? { stripePaymentIntentId: p.referencia } : {}),
           porcentajeComision: p.porcentaje,
           montoComision: p.comision,
         },
       });
       await tx.exhibicion.update({
         where: { id: exhibicion.id },
-        data: { estado: EstadoExhibicion.PAGADA },
+        data: {
+          estado: EstadoExhibicion.PAGADA,
+          proximoIntentoEn: null,
+          requiereTarjetaNueva: false,
+          cobroPendienteDesde: null,
+          referenciaPendiente: null,
+          ultimoCodigoRechazo: null,
+        },
       });
       // Un pago que llega con el plan ya cancelado (el comprador se autenticó
       // tarde) se registra, pero no reabre el plan: eso lo decide una persona.
-      const cancelado = plan.estado === EstadoPlan.CANCELADO;
+      // Uno suspendido sigue suspendido hasta que evaluarSuspension diga otra cosa.
+      const estadoPlan =
+        plan.estado === EstadoPlan.CANCELADO
+          ? null
+          : liquidado && !esAnticipo
+            ? EstadoPlan.LIQUIDADO
+            : plan.estado === EstadoPlan.SUSPENDIDO
+              ? null
+              : EstadoPlan.ACTIVO;
       await tx.plan.update({
         where: { id: plan.id },
         data: {
           saldo: saldo.lt(0) ? 0 : saldo,
           ...(esAnticipo ? { fechaCongelamiento: ahora } : {}),
-          ...(cancelado
-            ? {}
-            : { estado: esAnticipo || !liquidado ? EstadoPlan.ACTIVO : EstadoPlan.LIQUIDADO }),
+          ...(estadoPlan ? { estado: estadoPlan } : {}),
         },
       });
 
@@ -582,6 +761,17 @@ async function aplicarPago(p: {
             : `Exhibición ${exhibicion.numero} de ${mx(monto.toNumber())} cobrada (referencia ${p.referencia}). Comisión del canal: ${mxc(p.comision.toNumber())} (${pct}).`,
         },
       });
+      if (p.alertas && p.alertas.length > 0) {
+        await tx.evento.create({
+          data: {
+            entidadTipo: "plan",
+            entidadId: plan.id,
+            tipo: "discrepancia_stripe",
+            comentario: `ALERTA: al aplicar ${conceptoDe(exhibicion.numero)} (${p.referencia}), ${p.alertas.join("; ")}. Se registró lo de Stripe, que es lo que de verdad se cobró. Revisar por qué no coincide.`,
+          },
+        });
+      }
+      await evaluarSuspension(tx, plan.id, `se cobró ${conceptoDe(exhibicion.numero)}`);
       return "aplicado" as const;
     });
   } catch (err) {
@@ -589,7 +779,7 @@ async function aplicarPago(p: {
       const pago = await prisma.pago.findUnique({ where: { exhibicionId: p.exhibicionId } });
       if (pago) {
         const exhibicion = await prisma.exhibicion.findUniqueOrThrow({ where: { id: p.exhibicionId } });
-        return compararReferencia(prisma, pago, p.referencia, exhibicion);
+        return compararReferencia(prisma, pago, p.referencia, exhibicion, p.montoCentavos);
       }
     }
     throw err;
@@ -598,22 +788,35 @@ async function aplicarPago(p: {
 
 /**
  * La exhibición ya tenía pago. Si es el mismo cargo, es un reenvío y no pasa
- * nada. Si es otro, puede ser un doble cargo: se deja en la bitácora para que
- * alguien lo revise en Stripe, sin tocar el pago que ya estaba.
+ * nada. Si es otro, el dinero sí entró (Stripe manda): queda registrado como
+ * cargo excedente, sin tocar el pago que ya estaba (R3), y con una alerta
+ * para reembolsarlo.
  */
 async function compararReferencia(
   db: Tx | typeof prisma,
   pago: { referenciaStripe: string | null },
   referencia: string,
-  exhibicion: { planId: string; numero: number }
+  exhibicion: { id: string; planId: string; numero: number },
+  montoCentavos?: number
 ): Promise<ResultadoAplicacion> {
   if (pago.referenciaStripe === referencia) return "ya_aplicado";
+  const yaRegistrado = await db.cargoExcedente.findUnique({ where: { referenciaStripe: referencia } });
+  if (yaRegistrado) return "otro_cargo";
+
+  await db.cargoExcedente.create({
+    data: {
+      exhibicionId: exhibicion.id,
+      planId: exhibicion.planId,
+      referenciaStripe: referencia,
+      montoCentavos: montoCentavos ?? null,
+    },
+  });
   await db.evento.create({
     data: {
       entidadTipo: "plan",
       entidadId: exhibicion.planId,
       tipo: "posible_doble_cargo",
-      comentario: `ALERTA: ${conceptoDe(exhibicion.numero)} ya estaba pagada con ${pago.referenciaStripe} y llegó otro cargo confirmado, ${referencia}. Puede ser un doble cargo: revisarlo en Stripe y reembolsar el que sobre.`,
+      comentario: `ALERTA: ${conceptoDe(exhibicion.numero)} ya estaba pagada con ${pago.referenciaStripe} y llegó otro cargo confirmado, ${referencia}${montoCentavos !== undefined ? ` por ${mxc(montoCentavos / 100)}` : ""}. Es un doble cargo: quedó registrado como cargo excedente; revisarlo en Stripe y reembolsar el que sobre.`,
     },
   });
   return "otro_cargo";
@@ -708,7 +911,8 @@ export async function cambiarEstadoFinanciero(params: {
 
     if (params.hacia === EstadoFinanciero.CANCELADO) {
       const abiertos = (unidad.comprador?.planes ?? []).filter(
-        (p) => p.estado === EstadoPlan.COTIZADO || p.estado === EstadoPlan.ACTIVO
+        (p) =>
+          p.estado === EstadoPlan.COTIZADO || p.estado === EstadoPlan.ACTIVO || p.estado === EstadoPlan.SUSPENDIDO
       );
       for (const plan of abiertos) {
         await tx.plan.update({ where: { id: plan.id }, data: { estado: EstadoPlan.CANCELADO } });
@@ -772,189 +976,295 @@ async function seguirCaminoFinanciero(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Contrato (R1)
+// La tarjeta de las mensualidades (S1-06)
 // ─────────────────────────────────────────────────────────────────────────
+
 /**
- * Prepara un cobro Stripe, pero no aplica dinero al plan. El webhook es el
- * único camino que convierte este intento en Pago y actualiza el saldo.
+ * Prepara la captura de la tarjeta del comprador de un plan. Sin la
+ * autorización explícita de los cargos futuros no se prepara nada: es lo que
+ * permite cobrar las mensualidades sin que el comprador esté presente.
  */
-export async function prepararIntentoCobro(exhibicionId: string) {
-  const exhibicion = await prisma.exhibicion.findUnique({
-    where: { id: exhibicionId },
-    include: {
-      plan: {
-        include: {
-          comprador: { include: { unidad: { include: { proyecto: true, contrato: true } } } },
-        },
-      },
-    },
-  });
-  if (!exhibicion) throw new ReglaError("No se encontró la exhibición.");
-
-  const { plan } = exhibicion;
-  const unidad = plan.comprador.unidad;
-  const stripeAccountId = unidad.proyecto.stripeConnectedAccountId;
-
-  if (!stripeAccountId) {
-    throw new ReglaError("El proyecto no tiene configurada la cuenta Stripe de Moretti.");
+export async function prepararTarjeta(
+  params: { planId: string; consentimiento: boolean },
+  opciones: Opciones = {}
+) {
+  if (params.consentimiento !== true) {
+    throw new ReglaError(
+      "Para guardar la tarjeta, el comprador tiene que autorizar que ahí se le carguen sus mensualidades."
+    );
   }
-  if (!unidad.contrato) {
-    throw new ReglaError("No se puede cobrar: falta el contrato firmado con Moretti.");
-  }
-  if (exhibicion.numero > 0 && !plan.fechaCongelamiento) {
-    throw new ReglaError("No se puede cobrar una mensualidad antes del anticipo.");
-  }
-  if (exhibicion.estado === EstadoExhibicion.PAGADA) {
-    throw new ReglaError("Esta exhibición ya está pagada.");
-  }
-
-  const porcentajeComision = new Decimal(unidad.proyecto.porcentajeComision);
-  const monto = new Decimal(exhibicion.monto);
-  const montoComision = monto.mul(porcentajeComision).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-  const idempotencyKey = `exhibicion_${exhibicion.id}`;
-  const existing = await prisma.intentoCobro.findUnique({ where: { idempotencyKey } });
-
-  if (existing) {
-    if (existing.estado === EstadoIntentoCobro.CONFIRMADO) {
-      throw new ReglaError("Esta exhibición ya tiene un cobro confirmado.");
-    }
-    return {
-      id: existing.id,
-      planId: existing.planId,
-      exhibicionId: existing.exhibicionId,
-      monto: new Decimal(existing.monto),
-      porcentajeComision: new Decimal(existing.porcentajeComision),
-      montoComision: new Decimal(existing.montoComision),
-      idempotencyKey: existing.idempotencyKey,
-      stripeAccountId: existing.stripeAccountId,
-      stripePaymentIntentId: existing.stripePaymentIntentId,
-    };
-  }
-
-  return prisma.intentoCobro.create({
-    data: {
-      exhibicionId: exhibicion.id,
-      planId: plan.id,
-      idempotencyKey,
-      stripeAccountId,
-      monto,
-      porcentajeComision,
-      montoComision,
-    },
+  const plan = await planParaTarjeta(params.planId);
+  return (opciones.pasarela ?? pasarelaPorDefecto).prepararTarjeta({
+    compradorId: plan.compradorId,
+    proyectoId: plan.comprador.unidad.proyectoId,
   });
 }
 
-/** Aplica un PaymentIntent confirmado exactamente una vez. */
-export async function confirmarCobroStripe(params: {
-  paymentIntentId: string;
-  stripeAccountId: string;
-  stripeChargeId?: string;
-}) {
-  const intento = await prisma.intentoCobro.findUnique({
-    where: { stripePaymentIntentId: params.paymentIntentId },
-    include: { exhibicion: true },
+/**
+ * El navegador terminó de capturar la tarjeta. La pasarela verifica que sí
+ * quedó guardada y que es de este comprador; hasta entonces no se registra.
+ */
+export async function registrarTarjeta(
+  params: { planId: string; referenciaPreparacion: string },
+  opciones: Opciones = {}
+) {
+  const plan = await planParaTarjeta(params.planId);
+  const tarjeta = await (opciones.pasarela ?? pasarelaPorDefecto).confirmarTarjeta({
+    compradorId: plan.compradorId,
+    referenciaPreparacion: params.referenciaPreparacion,
   });
-  if (!intento) throw new ReglaError("No se encontró el intento de cobro para este PaymentIntent.");
-  if (intento.stripeAccountId !== params.stripeAccountId) {
-    throw new ReglaError("La cuenta Stripe del evento no coincide con el intento.");
-  }
-  if (intento.estado === EstadoIntentoCobro.CONFIRMADO) return;
+  await guardarTarjeta({ compradorId: plan.compradorId, ...tarjeta });
+  return tarjeta;
+}
 
-  await prisma.$transaction(async (tx) => {
-    const locked = await tx.intentoCobro.findUnique({
-      where: { id: intento.id },
-      include: { exhibicion: true },
+/**
+ * Guarda la tarjeta con la que se cobran las mensualidades y deja la
+ * autorización en la bitácora. La llama `registrarTarjeta` y también el
+ * webhook de `setup_intent.succeeded`: la que llegue segunda no hace nada.
+ * Devuelve si la guardó.
+ */
+export async function guardarTarjeta(params: {
+  compradorId: string;
+  referenciaTarjeta: string;
+  descripcion: string;
+  venceMes?: number;
+  venceAnio?: number;
+}): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const antes = await tx.comprador.findUnique({
+      where: { id: params.compradorId },
+      select: { tarjetaInvalida: true },
     });
-    if (!locked || locked.estado === EstadoIntentoCobro.CONFIRMADO) return;
-
-    const plan = await tx.plan.findUnique({
-      where: { id: locked.planId },
-      include: { comprador: { include: { unidad: true } } },
-    });
-    if (!plan) throw new ReglaError("No se encontró el plan del intento de cobro.");
-
-    const nuevoSaldo = new Decimal(plan.saldo).sub(new Decimal(locked.monto));
-    const esAnticipo = locked.exhibicion.numero === 0;
-    const liquidado = nuevoSaldo.lte(0);
-
-    await tx.pago.create({
+    // `not` solo no encuentra los null: por eso el OR.
+    const { count } = await tx.comprador.updateMany({
+      where: {
+        id: params.compradorId,
+        OR: [{ stripePaymentMethodId: null }, { stripePaymentMethodId: { not: params.referenciaTarjeta } }],
+      },
       data: {
-        planId: locked.planId,
-        exhibicionId: locked.exhibicionId,
-        monto: locked.monto,
-        referenciaStripe: params.paymentIntentId,
-        stripePaymentIntentId: params.paymentIntentId,
-        stripeChargeId: params.stripeChargeId,
-        stripeAccountId: params.stripeAccountId,
-        estado: EstadoPago.CONFIRMADO,
-        porcentajeComision: locked.porcentajeComision,
-        montoComision: locked.montoComision,
+        stripePaymentMethodId: params.referenciaTarjeta,
+        tarjetaDescripcion: params.descripcion,
+        tarjetaVenceMes: params.venceMes ?? null,
+        tarjetaVenceAnio: params.venceAnio ?? null,
+        tarjetaInvalida: false,
       },
     });
+    if (count === 0) return false;
+
+    // Con tarjeta nueva, lo que esperaba otra tarjeta vuelve al barrido y la
+    // cuenta de reintentos empieza de cero. La llave sigue subiendo aparte.
+    const { count: reactivadas } = await tx.exhibicion.updateMany({
+      where: {
+        plan: { compradorId: params.compradorId, estado: { not: EstadoPlan.CANCELADO } },
+        estado: { not: EstadoExhibicion.PAGADA },
+        OR: [{ requiereTarjetaNueva: true }, { rechazosConTarjeta: { gt: 0 } }],
+      },
+      data: { requiereTarjetaNueva: false, rechazosConTarjeta: 0, proximoIntentoEn: null },
+    });
+
+    const comprador = await tx.comprador.findUniqueOrThrow({ where: { id: params.compradorId } });
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: comprador.unidadId,
+        tipo: "tarjeta_registrada",
+        usuario: comprador.nombre,
+        comentario: `${comprador.nombre} registró su ${params.descripcion} y autorizó que ahí se le carguen las mensualidades de su plan sin estar presente.${antes?.tarjetaInvalida ? " Reemplaza a la que el banco reportó como inválida." : ""}${reactivadas > 0 ? ` ${reactivadas === 1 ? "La mensualidad rechazada vuelve" : `Las ${reactivadas} mensualidades rechazadas vuelven`} a cobrarse en el siguiente barrido.` : ""}`,
+      },
+    });
+    return true;
+  });
+}
+
+/**
+ * El banco renovó la tarjeta guardada por su cuenta (en Stripe,
+ * `payment_method.automatically_updated`): nuevo vencimiento y, a veces,
+ * nuevos últimos cuatro. Si alguna mensualidad esperaba otra tarjeta porque
+ * la anterior estaba vencida, vuelve al barrido. Devuelve si encontró al comprador.
+ */
+export async function actualizarTarjetaDelBanco(params: {
+  referenciaTarjeta: string;
+  descripcion: string;
+  venceMes?: number;
+  venceAnio?: number;
+}): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const comprador = await tx.comprador.findFirst({ where: { stripePaymentMethodId: params.referenciaTarjeta } });
+    if (!comprador) return false;
+
+    await tx.comprador.update({
+      where: { id: comprador.id },
+      data: {
+        tarjetaDescripcion: params.descripcion,
+        tarjetaVenceMes: params.venceMes ?? comprador.tarjetaVenceMes,
+        tarjetaVenceAnio: params.venceAnio ?? comprador.tarjetaVenceAnio,
+      },
+    });
+    const { count: reactivadas } = await tx.exhibicion.updateMany({
+      where: {
+        plan: { compradorId: comprador.id, estado: { not: EstadoPlan.CANCELADO } },
+        estado: { not: EstadoExhibicion.PAGADA },
+        requiereTarjetaNueva: true,
+        ultimoCodigoRechazo: "expired_card",
+      },
+      data: { requiereTarjetaNueva: false, rechazosConTarjeta: 0, proximoIntentoEn: null },
+    });
+    const vence =
+      params.venceMes && params.venceAnio ? ` Vence ${String(params.venceMes).padStart(2, "0")}/${params.venceAnio}.` : "";
+    await tx.evento.create({
+      data: {
+        entidadTipo: "unidad",
+        entidadId: comprador.unidadId,
+        tipo: "tarjeta_actualizada_por_banco",
+        comentario: `El banco actualizó la tarjeta de ${comprador.nombre}: ahora es ${params.descripcion}.${vence}${reactivadas > 0 ? ` ${reactivadas === 1 ? "La mensualidad rechazada por tarjeta vencida vuelve" : `Las ${reactivadas} mensualidades rechazadas por tarjeta vencida vuelven`} a cobrarse en el siguiente barrido.` : ""}`,
+      },
+    });
+    return true;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Anticipo con captura manual (STRIPE_CAPTURE_METHOD = manual)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * El banco autorizó el anticipo y el dinero quedó apartado, sin cobrar (en
+ * Stripe, `payment_intent.amount_capturable_updated`). No se aplica ningún
+ * pago: sólo se anota y se recuerda la referencia para capturarla o liberarla.
+ */
+export async function registrarAutorizacion(params: {
+  exhibicionId: string;
+  referenciaPasarela: string;
+  montoCentavos: number;
+}): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const exhibicion = await tx.exhibicion.findUniqueOrThrow({ where: { id: params.exhibicionId } });
+    if (exhibicion.estado === EstadoExhibicion.PAGADA) return false;
     await tx.exhibicion.update({
-      where: { id: locked.exhibicionId },
-      data: { estado: EstadoExhibicion.PAGADA },
-    });
-    await tx.plan.update({
-      where: { id: locked.planId },
-      data: {
-        estado: esAnticipo ? EstadoPlan.ACTIVO : liquidado ? EstadoPlan.LIQUIDADO : EstadoPlan.ACTIVO,
-        fechaCongelamiento: esAnticipo ? new Date() : undefined,
-        saldo: nuevoSaldo.lt(0) ? 0 : nuevoSaldo,
-      },
-    });
-    await tx.unidad.update({
-      where: { id: plan.comprador.unidad.id },
-      data: {
-        estadoFinanciero: esAnticipo
-          ? EstadoFinanciero.APARTADO
-          : liquidado
-            ? EstadoFinanciero.LIQUIDADO
-            : EstadoFinanciero.AL_CORRIENTE,
-      },
-    });
-    await tx.intentoCobro.update({
-      where: { id: locked.id },
-      data: { estado: EstadoIntentoCobro.CONFIRMADO },
+      where: { id: exhibicion.id },
+      data: { cobroPendienteDesde: exhibicion.cobroPendienteDesde ?? new Date(), referenciaPendiente: params.referenciaPasarela },
     });
     await tx.evento.create({
       data: {
         entidadTipo: "plan",
-        entidadId: plan.id,
-        tipo: esAnticipo ? "anticipo_cobrado" : "exhibicion_cobrada",
-        estadoNuevo: esAnticipo
-          ? EstadoFinanciero.APARTADO
-          : liquidado
-            ? EstadoFinanciero.LIQUIDADO
-            : EstadoFinanciero.AL_CORRIENTE,
-        comentario: `Stripe confirmó ${esAnticipo ? "el anticipo" : `la exhibición ${locked.exhibicion.numero}`} por $${new Decimal(locked.monto).toFixed(2)}.`,
+        entidadId: exhibicion.planId,
+        tipo: "cobro_autorizado",
+        comentario: `El banco autorizó ${conceptoDe(exhibicion.numero)} por ${mxc(params.montoCentavos / 100)} (${params.referenciaPasarela}). El dinero está apartado, no cobrado: falta capturarlo o liberarlo.`,
       },
     });
+    return true;
   });
 }
 
-export async function marcarIntentoCobroFallido(params: {
-  paymentIntentId: string;
-  stripeAccountId: string;
-  codigo?: string;
-  mensaje?: string;
-}) {
-  const intento = await prisma.intentoCobro.findUnique({
-    where: { stripePaymentIntentId: params.paymentIntentId },
-  });
-  if (!intento || intento.stripeAccountId !== params.stripeAccountId) return;
-  if (intento.estado === EstadoIntentoCobro.CONFIRMADO) return;
+/** Cobra el anticipo que quedó autorizado. Contesta como cualquier cobro. */
+export async function capturarAnticipo(planId: string, opciones: Opciones = {}): Promise<ResultadoCobroMotor> {
+  const { anticipo, proyecto } = await anticipoAutorizado(planId);
+  const pasarela = opciones.pasarela ?? pasarelaPorDefecto;
+  const referencia = anticipo.referenciaPendiente!;
 
-  await prisma.intentoCobro.update({
-    where: { id: intento.id },
-    data: {
-      estado: EstadoIntentoCobro.FALLIDO,
-      codigoFallo: params.codigo,
-      mensajeFallo: params.mensaje,
-    },
+  let resultado;
+  try {
+    resultado = await pasarela.capturar({ referenciaPasarela: referencia, proyectoId: proyecto.id });
+  } catch (err) {
+    if (err instanceof ReglaError) throw err;
+    throw new PasarelaError("La pasarela no respondió al capturar. Vuelve a intentar: no se captura dos veces.", {
+      cause: err,
+    });
+  }
+
+  if (resultado.estado === "exitoso") {
+    const { porcentaje, comision } = comisionDe(anticipo.monto, proyecto.porcentajeComision);
+    await aplicarPago({ exhibicionId: anticipo.id, referencia: resultado.referenciaPasarela, porcentaje, comision });
+    return { estado: "exitoso", referencia: resultado.referenciaPasarela };
+  }
+  if (resultado.estado === "rechazado") {
+    const intento = anticipo.intentosRechazados + 1;
+    await registrarCobroRechazado({ exhibicionId: anticipo.id, intento, codigo: resultado.codigoRechazo });
+    return {
+      estado: "rechazado",
+      codigo: resultado.codigoRechazo,
+      intento,
+      mensaje: `No se pudo capturar el anticipo: ${explicarRechazo(resultado.codigoRechazo)} (${resultado.codigoRechazo}).`,
+    };
+  }
+  return {
+    estado: "pendiente",
+    referencia: resultado.referenciaPasarela,
+    mensaje: `La captura quedó pendiente: ${resultado.motivo}.`,
+  };
+}
+
+/**
+ * Libera el anticipo autorizado sin cobrarlo. Se anota como intento cerrado
+ * (`autorizacion_liberada`): el siguiente cobro va con llave nueva.
+ */
+export async function liberarAnticipo(planId: string, opciones: Opciones = {}) {
+  const { anticipo, proyecto } = await anticipoAutorizado(planId);
+  const pasarela = opciones.pasarela ?? pasarelaPorDefecto;
+  try {
+    await pasarela.liberar({ referenciaPasarela: anticipo.referenciaPendiente!, proyectoId: proyecto.id });
+  } catch (err) {
+    if (err instanceof ReglaError) throw err;
+    throw new PasarelaError("La pasarela no respondió al liberar. Vuelve a intentar.", { cause: err });
+  }
+  // El webhook payment_intent.canceled hace lo mismo; el que llegue segundo no anota nada.
+  await registrarCobroRechazado({
+    exhibicionId: anticipo.id,
+    intento: anticipo.intentosRechazados + 1,
+    codigo: "autorizacion_liberada",
   });
 }
 
+async function anticipoAutorizado(planId: string) {
+  const plan = await prisma.plan.findUnique({
+    where: { id: planId },
+    include: { exhibiciones: { where: { numero: 0 } }, comprador: { include: { unidad: { include: { proyecto: true } } } } },
+  });
+  if (!plan) throw new ReglaError("No se encontró el plan.");
+  const anticipo = plan.exhibiciones[0];
+  if (!anticipo) throw new ReglaError("El plan no tiene exhibición de anticipo.");
+  if (anticipo.estado === EstadoExhibicion.PAGADA) throw new ReglaError("El anticipo de este plan ya se cobró.");
+  if (!anticipo.referenciaPendiente) {
+    throw new ReglaError("El anticipo no tiene un cobro autorizado pendiente: no hay nada que capturar ni liberar.");
+  }
+  return { anticipo, proyecto: plan.comprador.unidad.proyecto };
+}
+
+async function planParaTarjeta(planId: string) {
+  const plan = await prisma.plan.findUnique({
+    where: { id: planId },
+    include: { comprador: { include: { unidad: true } } },
+  });
+  if (!plan) throw new ReglaError("No se encontró el plan.");
+  if (plan.estado === EstadoPlan.CANCELADO) {
+    throw new ReglaError("El plan está cancelado: ya no se le cobra nada.");
+  }
+  if (plan.estado === EstadoPlan.LIQUIDADO) {
+    throw new ReglaError("El plan ya está liquidado: no hace falta tarjeta.");
+  }
+  return plan;
+}
+
+/**
+ * Lo que consulta el navegador mientras espera a que el webhook aplique un
+ * cobro pendiente. Sólo lee: nunca marca nada.
+ */
+export async function estadoCobro(exhibicionId: string) {
+  const exhibicion = await prisma.exhibicion.findUnique({
+    where: { id: exhibicionId },
+    include: { pago: true },
+  });
+  if (!exhibicion) throw new ReglaError("No se encontró la exhibición.");
+  return {
+    pagada: exhibicion.estado === EstadoExhibicion.PAGADA,
+    referencia: exhibicion.pago?.referenciaStripe ?? null,
+    intentosRechazados: exhibicion.intentosRechazados,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Contrato (R1)
+// ─────────────────────────────────────────────────────────────────────────
 export async function registrarContrato(params: {
   unidadId: string;
   archivoNombre: string;

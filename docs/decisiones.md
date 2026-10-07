@@ -253,3 +253,55 @@ la otra) · **Sustituida**.
 - **Por qué:** los precios de lista se redondean a la centena (spec §4) y el
   cotizador calcula en enteros para dar exactamente lo mismo que el motor.
   Mejor rechazar en la captura que redondear en silencio.
+
+## D-22 · Las mensualidades las cobra un barrido, no Stripe Billing
+
+- **Fecha / quién:** 7 oct · Charly (Claude) · **Vigente**
+- **Decisión:** las mensualidades se cobran fuera de sesión con
+  `cobrarVencidas` (`lib/motor/barrido.ts`), que dispara un cron por
+  `/api/cobranza/barrido` con `CRON_SECRET`. No se usan suscripciones ni
+  Smart Retries de Stripe.
+- **Por qué:** el plan, sus montos congelados y sus fechas viven en el motor
+  (R2, R7); duplicarlos en Stripe Billing haría dos fuentes de verdad. Con el
+  barrido, cada cobro pasa por el mismo `cobrarExhibicion` que el botón del
+  back office: misma llave de idempotencia, misma bitácora.
+- **Cómo no cobra dos veces:** candado por exhibición con una actualización
+  condicionada (`bloqueadaHasta`), no toca cobros pendientes
+  (`cobroPendienteDesde`) y, en el peor caso, la llave es la misma.
+
+## D-23 · Reintentos: una regla por código de rechazo, la decide el motor
+
+- **Fecha / quién:** 7 oct · Charly (Claude) · **Vigente** (reemplaza la
+  primera versión del mismo día, con una espera única para todos)
+- **Decisión:** cada código tiene su explicación y su regla
+  (`lib/motor/rechazos.ts`): `insufficient_funds` a 3 y 7 días,
+  `generic_decline` una vez a 2 días, perdida/robada/retenida marcan la
+  **tarjeta** inválida para todo el plan, vencida pide otra. Los códigos que
+  la especificación no menciona tienen su propia regla, por ratificar con
+  Operación; uno desconocido no se reintenta y pide revisarlo. Si el banco
+  manda `advice_code = do_not_try_again`, se respeta. El `reintentar` de la
+  pasarela queda informativo (contrato v2.2).
+- **Por qué:** Charly quiere saber a qué se debe cada rechazo y por qué se
+  reintentó o no; con una espera única todos se veían iguales.
+
+## D-24 · El plan se suspende (no la unidad) por vencidas o por disputa
+
+- **Fecha / quién:** 7 oct · Charly (Claude) · **Vigente**
+- **Decisión:** nuevo estado `EstadoPlan.SUSPENDIDO`. El plan se suspende con
+  dos vencidas (`COBRANZA_VENCIDAS_SUSPENDEN`) o una disputa abierta, y se
+  reactiva solo cuando ya no queda ningún motivo (`lib/motor/suspension.ts`).
+  Por vencidas se le sigue cobrando; por disputa, no. El estado financiero de
+  la unidad (S1-13) no se toca.
+- **Por qué:** decisión de Charly: «congelar» por disputa = suspender, y la
+  suspensión es del plan.
+
+## D-25 · Reembolsos, disputas y cargos de más son registros nuevos (R3)
+
+- **Fecha / quién:** 7 oct · Charly (Claude) · **Vigente**
+- **Decisión:** tablas `Reembolso`, `Disputa` y `CargoExcedente`. Nada edita
+  el `Pago` original; lo único que se le llena después es una referencia
+  (`stripeApplicationFeeId`), una vez. `EstadoPago` (REEMBOLSADO, DISPUTADO…)
+  queda sin usar. Ningún movimiento mueve el saldo del plan: lo decide una
+  persona con la alerta.
+- **Por qué:** R3 y «la pasarela manda»: lo que Stripe dice que pasó con el
+  dinero queda registrado tal cual, aunque no cuadre, con una alerta.

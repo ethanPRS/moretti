@@ -18,9 +18,16 @@ export const config = {
 const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   { metodo: "POST", ruta: /^\/api\/admin\/(login|logout)$/ },
   { metodo: "POST", ruta: /^\/api\/apartar(\/anticipo)?$/ },
+  // La tarjeta al apartar; la ruta sólo la deja cambiar sin sesión mientras el plan es cotización.
+  { metodo: "POST", ruta: /^\/api\/planes\/[^/]+\/tarjeta(\/confirmar)?$/ },
+  // El navegador espera aquí a que el webhook aplique un cobro pendiente.
+  { metodo: "GET", ruta: /^\/api\/exhibiciones\/[^/]+\/estado$/ },
   { metodo: "GET", ruta: /^\/api\/imagenes\/[^/]+$/ },
   // Lo llama Stripe, sin sesión ni Origin; la ruta verifica la firma del evento.
   { metodo: "POST", ruta: /^\/api\/stripe\/webhook$/ },
+  // Lo llama el cron, sin sesión; la ruta exige CRON_SECRET.
+  { metodo: "GET", ruta: /^\/api\/cobranza\/barrido$/ },
+  { metodo: "POST", ruta: /^\/api\/cobranza\/barrido$/ },
 ];
 
 const CAMBIA = new Set(["POST", "PUT", "PATCH", "DELETE"]);
