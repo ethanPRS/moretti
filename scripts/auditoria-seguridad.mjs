@@ -56,8 +56,19 @@ const PRIVADAS = [
   ["POST", "/api/contratos"],
   ["POST", "/api/imagenes"],
   ["POST", "/api/stripe/create-payment-intent"],
-  ["POST", "/api/apartar/anticipo"],
 ];
+// Públicas desde la integración del 11 oct, pero sólo con el token del
+// apartado de ESE plan (H-2): sin él, nunca 200.
+for (const [ruta, cuerpo] of [
+  ["/api/apartar/anticipo", { planId: "plan_ajeno" }],
+  ["/api/planes/plan_ajeno/tarjeta", { consentimiento: true }],
+  ["/api/planes/plan_ajeno/tarjeta/confirmar", { setupIntentId: "seti_x" }],
+]) {
+  await caso(`POST ${ruta} sin token del apartado → no cobra ni toca la tarjeta`, async () => {
+    const r = await pedir(ruta, { method: "POST", headers: { "Content-Type": "application/json", "x-apartado": "1.falso" }, body: JSON.stringify(cuerpo) });
+    esperar([403, 503].includes(r.status), `contestó ${r.status}`);
+  });
+}
 for (const [metodo, ruta] of PRIVADAS) {
   await caso(`${metodo} ${ruta} sin sesión → 401`, async () => {
     const r = await pedir(ruta, { method: metodo, headers: { "Content-Type": "application/json" }, body: metodo === "GET" ? undefined : "{}" });
