@@ -3,11 +3,13 @@ import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
 import { PageHead, Money, ChipEstadoFinanciero } from "@/components/ui";
+import Graficas from "@/components/admin/Graficas";
+import { datosGraficas } from "@/lib/motor/graficas";
 
 export default async function PanelPage() {
   // En cada visita, no al compilar: lee la base.
   await connection();
-  const [planes, unidadesLibres, pagos, cuentas] = await Promise.all([
+  const [planes, unidadesLibres, pagos, cuentas, graficas] = await Promise.all([
     prisma.plan.findMany({
       where: { estado: { not: EstadoPlan.CANCELADO } },
       include: {
@@ -26,6 +28,7 @@ export default async function PanelPage() {
       prisma.precio.count({ where: { vigenteHasta: null } }),
       prisma.paquete.count({ where: { imagen: { not: null } } }),
     ]),
+    datosGraficas(),
   ]);
   const [nProyectos, nPrototipos, nUnidades, nPrecios, nPaquetesConFoto] = cuentas;
 
@@ -73,6 +76,8 @@ export default async function PanelPage() {
           <p className="v">{planes.length} · {unidadesLibres}</p>
         </div>
       </div>
+
+      <Graficas {...graficas} />
 
       <section className="card grid gap-6 p-6 sm:p-8 lg:grid-cols-[260px_1fr]">
         <div>

@@ -472,3 +472,37 @@
   color: var(--muted);
   text-transform: uppercase;
 }
+
+/* ── Gráficas del inicio (retro Sprint 2) ─────────────────────────────── */
+.graf {
+  --g-cobrado: #2a78d6;
+  --g-vencido: #d0632a;
+  --g-resto: #d9d4cb;
+  margin: 0;
+}
+.graf-lienzo { position: relative; }
+.graf-lienzo svg { display: block; width: 100%; height: auto; overflow: visible; }
+.graf-base { stroke: var(--line-2); stroke-width: 1; }
+.graf-serie { fill: var(--g-cobrado); transition: opacity 0.15s var(--ease); }
+.graf-serie[data-tenue] { opacity: 0.35; }
+.graf-eje { font-size: 12px; fill: var(--muted); }
+.graf-valor { font-size: 12px; font-weight: 600; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.graf-tip {
+  position: absolute; top: 0; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 2px; pointer-events: none;
+  padding: 8px 10px; border-radius: 10px; background: var(--ink); color: var(--surface);
+  font-size: 12px; white-space: nowrap; box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+}
+.graf-apilada { display: flex; gap: 2px; height: 22px; }
+.graf-apilada > span { min-width: 4px; border-radius: 4px; }
+.graf-s-cobrado { background: var(--g-cobrado); }
+.graf-s-vencido { background: var(--g-vencido); }
+/* Lo que falta: gris con rayas, para que no dependa sólo del color. */
+.graf-s-resto {
+  background: repeating-linear-gradient(135deg, var(--g-resto) 0 6px, #e8e4dc 6px 9px);
+}
+.graf-leyenda { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 13px; }
+.graf-leyenda li { display: flex; align-items: center; gap: 6px; }
+.graf-leyenda b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.graf-muestra { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.graf-vacia { padding: 18px 0; color: var(--muted); font-size: 14px; }
