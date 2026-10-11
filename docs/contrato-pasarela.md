@@ -77,6 +77,15 @@ Sólo agrega.
 | 12 | `TarjetaConfirmada` trae `venceMes` y `venceAnio`. | Para saber cuándo vence y para `payment_method.automatically_updated`. |
 | 13 | Métodos `reembolsar` (con `devolverComision` obligatorio y llave `llaveReembolso()`), `capturar` y `liberar`. | Reembolsos desde el back office y anticipo con captura manual. |
 
+## Versión 2.3 · 11 de octubre (integración del Sprint 3) · por ratificar con Charly
+
+Sólo agrega.
+
+| # | Cambio | Por qué |
+|---|---|---|
+| 14 | Método `transferir({ transferenciaId, proyectoId, montoCentavos, referenciasCargos }) → exitoso \| fallido`, idempotente con `transferencia_<id>`. | D-34: la plataforma retiene y Ana Cris autoriza pagarle a Moretti. |
+| 15 | `accion.cuentaConectada` pasa a opcional. | Con D-34 el cargo vive en la plataforma; el navegador autentica con la llave pública sin cuenta conectada. |
+
 Qué pasarela se usa (`lib/pasarela/index.ts`): Stripe si hay `STRIPE_SECRET_KEY`
 de prueba (`sk_test_`); si no, la falsa. Llaves de producción no se aceptan
 todavía.

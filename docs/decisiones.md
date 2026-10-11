@@ -532,3 +532,83 @@ la otra) · **Sustituida**.
   persona con la alerta.
 - **Por qué:** R3 y «la pasarela manda»: lo que Stripe dice que pasó con el
   dinero queda registrado tal cual, aunque no cuadre, con una alerta.
+
+---
+
+> D-40 a D-44 las tomó Claude el 11 de octubre a nombre de Ethan, al cerrar
+> el Sprint 2 e integrar la rama de Charly para el Sprint 3. **Por ratificar
+> por Ethan**; D-40, D-41 y D-42 tocan código de Charly: también por él.
+
+## D-40 · Al integrar, manda el modelo de dinero de Ana Cris (D-34)
+
+- **Fecha / quién:** 11 oct · Ethan (Claude) · **Por ratificar** (Ethan y Charly)
+- **Contexto:** `charly-backend-final` (7 oct) se escribió sobre una rama
+  vieja y hacía **cargos directos** en la cuenta de Moretti con
+  `application_fee_amount`. Desde el 5 oct, D-34 (respuesta de Ana Cris a
+  I-10) dice que cobra la plataforma y retiene.
+- **Decisión:** se conserva todo lo de Charly (barrido, reintentos por código,
+  suspensión, reembolsos, disputas, captura manual, confirmación de tarjeta)
+  y se cambia sólo **dónde** vive el cargo: en la plataforma, sin clon, sin
+  `Stripe-Account`, sin application fee y con `transfer_group` por proyecto.
+  Se agrega `pasarelaStripe.transferir`. El webhook espera todo de la
+  plataforma; ya no hace falta `STRIPE_WEBHOOK_SECRET_CONNECT`. El contrato
+  sube a v2.3 sólo agregando.
+- **Por qué:** es una decisión de negocio, no técnica; el código de Charly no
+  dependía del lugar del cargo salvo en `stripe.ts` y el webhook.
+- **Qué la cambiaría:** que Ana Cris regrese a «Moretti cobra». Entonces se
+  recupera `stripe.ts` de `e4cf2fe` tal cual.
+- **Pendiente de Charly:** correr `npm run test:stripe` con sus llaves (no hay
+  llaves en el equipo de Ethan) y revisar la transferencia en el Dashboard.
+
+## D-41 · El anticipo público exige el token del apartado
+
+- **Fecha / quién:** 11 oct · Ethan (Claude) · **Por ratificar** (Charly)
+- **Contexto:** la rama de Charly volvió a abrir `POST /api/apartar/anticipo`
+  sin sesión con sólo el id del plan: el hallazgo **H-2** de la auditoría.
+  Con la pasarela falsa marcaba pagado sin dinero; con Stripe, cualquiera con
+  el id podía disparar el cobro o cambiarle la tarjeta a un plan ajeno.
+- **Decisión:** `/api/apartar` devuelve un token HMAC del plan (2 horas,
+  `lib/apartado.ts`); el navegador lo manda en `x-apartado`. Las rutas
+  públicas de tarjeta y anticipo lo exigen además de que el plan siga en
+  cotización. Sin Stripe configurado, el anticipo público contesta 503.
+- **Evidencia:** `lib/apartado.test.ts` y la auditoría (45/45).
+
+## D-42 · Lo reembolsado o en disputa no se le transfiere a Moretti
+
+- **Fecha / quién:** 11 oct · Ethan (Claude) · **Por ratificar**
+- **Decisión:** un pago con cualquier reembolso, o con una disputa abierta o
+  perdida, queda fuera de «lo retenido» hasta que una persona lo revise. Y un
+  pago ya transferido no se reembolsa desde el back office: primero hay que
+  revertir la transferencia (es la tarea U de Charly; el mensaje lo dice).
+- **Por qué:** con D-34, si se transfiere y luego se reembolsa, la plataforma
+  pone el dinero dos veces. Excluir completo (y no prorratear) es lo más
+  conservador para un prototipo.
+- **Qué la cambiaría:** que Ana Cris quiera transferir la parte no
+  reembolsada de un pago parcial.
+
+## D-43 · Las gráficas del back office se dibujan en SVG, sin librería
+
+- **Fecha / quién:** 11 oct · Ethan (Claude) · **Por ratificar** · pedido en
+  la retro del Sprint 2 (Charly).
+- **Decisión:** tres gráficas en el inicio: cobrado por mes (columnas),
+  estado de la cartera (barra apilada: cobrado / al corriente / vencido) y el
+  dinero de Moretti por proyecto (transferido / retenido). SVG y CSS a mano,
+  datos en `lib/motor/graficas.ts` con pruebas.
+- **Por qué:** tres formas simples no justifican una dependencia nueva a una
+  semana de la entrega; sin JavaScript extra en el servidor y sin riesgo de
+  versiones. Colores azul `#2a78d6` y naranja `#d0632a`, validados para
+  daltonismo; lo que falta va en gris rayado, y cada gráfica tiene leyenda con
+  montos y «Ver como tabla».
+
+## D-44 · La prueba con dinero real no se habilita en el código sin Ethan y Charly
+
+- **Fecha / quién:** 11 oct · Ethan (Claude) · **Para decidir el lunes 12**
+- **Contexto:** se le va a pedir dinero a Ana Cris para probar transacciones
+  reales. Hoy el código sólo acepta llaves `sk_test_` y el webhook rechaza
+  eventos `livemode`.
+- **Decisión:** no se cambió ese candado. Se intentó agregar un modo real
+  con bandera y tope por cobro, y el control de permisos del entorno lo
+  bloqueó por debilitar una protección; es correcto que lo decidan y lo
+  hagan Ethan y Charly juntos, con la cuenta real verificada.
+- **Propuesta para el lunes:** `docs/sprint-03/prueba-dinero-real.md`
+  (monto, pasos, quién hace qué y cómo se devuelve el dinero).

@@ -5,6 +5,7 @@ import { pasarelaStripe } from "./stripe";
 import { llaveIdempotencia } from "./contrato";
 import { cobrarAnticipo, darDeAlta, prepararTarjeta, registrarTarjeta } from "@/lib/motor/planes";
 import { cobrarVencidas } from "@/lib/motor/barrido";
+import { autorizarTransferencia } from "@/lib/motor/transferencias";
 import { baseLimpiaConCatalogo, eventosDelPlan, firmarContrato, paquete, unidadLibre } from "@/pruebas/utilidades";
 
 /**
@@ -13,13 +14,14 @@ import { baseLimpiaConCatalogo, eventosDelPlan, firmarContrato, paquete, unidadL
  * Necesita en .env:
  * - STRIPE_SECRET_KEY=sk_test_…
  * - STRIPE_E2E_CUENTA=acct_… una cuenta conectada de prueba con pagos con
- *   tarjeta activos (Dashboard › Connect). Es la «cuenta de Moretti».
+ *   tarjeta activos (Dashboard › Connect). Es la «cuenta de Moretti»: con D-34
+ *   sólo recibe la transferencia; los cargos viven en la plataforma.
  *
- * El recorrido: guardar tarjeta → anticipo con comisión separada → cambiar a
+ * El recorrido: guardar tarjeta → anticipo en la plataforma (D-34) → cambiar a
  * una tarjeta que se guarda pero rechaza los cargos (4000 0000 0000 0341) →
  * el barrido cobra la mensualidad vencida y el banco la rechaza → el
  * comprador registra otra tarjeta → el barrido la reintenta con llave nueva y
- * se cobra una sola vez.
+ * se cobra una sola vez → Ana Cris autoriza la transferencia a Moretti.
  *
  * No prueba el webhook: para eso, `stripe listen` (docs/integracion-stripe.md).
  * El motor no lo necesita para aplicar estos cobros: la respuesta de Stripe
@@ -59,19 +61,26 @@ describe.skipIf(!configurado)("Stripe modo prueba · un rechazo y su reintento",
   const mensualidad1 = () =>
     prisma.exhibicion.findFirstOrThrow({ where: { planId, numero: 1 }, include: { pago: true } });
 
-  it("guarda la tarjeta y cobra el anticipo como cargo directo con la comisión separada", async () => {
+  it("guarda la tarjeta y cobra el anticipo en la plataforma, sin application fee (D-34)", async () => {
     expect((await registrar("pm_card_visa")).descripcion).toMatch(/4242/);
 
     const r = await cobrarAnticipo(planId, { pasarela: pasarelaStripe });
     expect(r.estado).toBe("exitoso");
     if (r.estado !== "exitoso") return;
 
-    const pi = await stripe.paymentIntents.retrieve(r.referencia, {}, { stripeAccount: cuenta });
+    const pi = await stripe.paymentIntents.retrieve(r.referencia);
     const anticipo = await prisma.exhibicion.findFirstOrThrow({ where: { planId, numero: 0 }, include: { pago: true } });
     expect(pi.status).toBe("succeeded");
     expect(pi.amount).toBe(Math.round(Number(anticipo.monto) * 100));
-    expect(pi.application_fee_amount).toBe(Math.round(Number(anticipo.pago!.montoComision) * 100));
-    expect(pi.metadata).toMatchObject({ planId, numeroExhibicion: "0", intento: "1" });
+    // La comisión no es application fee: es lo que no se le transfiere a Moretti.
+    expect(pi.application_fee_amount).toBeNull();
+    expect(pi.transfer_data).toBeNull();
+    expect(pi.metadata).toMatchObject({
+      planId,
+      numeroExhibicion: "0",
+      intento: "1",
+      comisionCentavos: String(Math.round(Number(anticipo.pago!.montoComision) * 100)),
+    });
   });
 
   it("la mensualidad vencida se cobra fuera de sesión, el banco la rechaza y queda en la bitácora", async () => {
@@ -103,7 +112,7 @@ describe.skipIf(!configurado)("Stripe modo prueba · un rechazo y su reintento",
 
     const m1 = await mensualidad1();
     expect(m1.estado).toBe("PAGADA");
-    const pi = await stripe.paymentIntents.retrieve(m1.pago!.referenciaStripe!, {}, { stripeAccount: cuenta });
+    const pi = await stripe.paymentIntents.retrieve(m1.pago!.referenciaStripe!);
     expect(pi.metadata.intento).toBe("2");
 
     // Mandar otra vez el mismo intento devuelve el mismo cargo: Stripe reconoce la llave.
@@ -113,7 +122,7 @@ describe.skipIf(!configurado)("Stripe modo prueba · un rechazo y su reintento",
       numeroExhibicion: 1,
       intento: 2,
       montoCentavos: pi.amount,
-      comisionCentavos: pi.application_fee_amount ?? 0,
+      comisionCentavos: Number(pi.metadata.comisionCentavos),
       compradorId: (await prisma.plan.findUniqueOrThrow({ where: { id: planId } })).compradorId,
       proyectoId: (await prisma.unidad.findFirstOrThrow({ where: { comprador: { planes: { some: { id: planId } } } } }))
         .proyectoId,
@@ -122,5 +131,17 @@ describe.skipIf(!configurado)("Stripe modo prueba · un rechazo y su reintento",
     expect(otraVez).toEqual({ estado: "exitoso", referenciaPasarela: pi.id });
     expect(llaveIdempotencia({ planId, numeroExhibicion: 1, intento: 2 })).toBe(`plan_${planId}:exh_1:int_2`);
     expect(await prisma.pago.count({ where: { exhibicionId: m1.id } })).toBe(1);
+  });
+
+  it("Ana Cris autoriza y la plataforma le transfiere a Moretti el neto (D-34)", async () => {
+    const proyectoId = (await prisma.unidad.findFirstOrThrow({ where: { comprador: { planes: { some: { id: planId } } } } }))
+      .proyectoId;
+    const t = await autorizarTransferencia({ proyectoId, autorizadaPor: "Prueba E2E" }, { pasarela: pasarelaStripe });
+    // En modo prueba, lo cobrado con 4242 queda «pending»: si Stripe contesta
+    // saldo insuficiente, cobrar con pm_card_bypassPending (docs/integracion-stripe.md).
+    const transfer = await stripe.transfers.retrieve(t.referencia);
+    expect(transfer.destination).toBe(cuenta);
+    expect(transfer.amount).toBe(Math.round(Number(t.neto) * 100));
+    expect(transfer.transfer_group).toBe(`proyecto_${proyectoId}`);
   });
 });
