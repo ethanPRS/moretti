@@ -17,13 +17,19 @@ export const config = {
 
 const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   { metodo: "POST", ruta: /^\/api\/admin\/(login|logout)$/ },
-  // Sólo el alta con contrato simulado. El anticipo ya no se cobra por una
-  // ruta pública con el id del plan: cualquiera con un id lo habría «pagado»
-  // (auditoría del 6 oct, H-2).
-  { metodo: "POST", ruta: /^\/api\/apartar$/ },
+  // El alta con contrato simulado y, con el token del apartado (lib/apartado.ts),
+  // la tarjeta y el anticipo de ESE plan. Sin token, el anticipo de un plan
+  // ajeno no se cobra (auditoría del 6 oct, H-2; reabierto e integrado el 11 oct).
+  { metodo: "POST", ruta: /^\/api\/apartar(\/anticipo)?$/ },
+  { metodo: "POST", ruta: /^\/api\/planes\/[^/]+\/tarjeta(\/confirmar)?$/ },
+  // El navegador espera aquí a que el webhook aplique un cobro pendiente.
+  { metodo: "GET", ruta: /^\/api\/exhibiciones\/[^/]+\/estado$/ },
   { metodo: "GET", ruta: /^\/api\/imagenes\/[^/]+$/ },
   // Lo llama Stripe, sin sesión ni Origin; la ruta verifica la firma del evento.
   { metodo: "POST", ruta: /^\/api\/stripe\/webhook$/ },
+  // Lo llama el cron, sin sesión; la ruta exige CRON_SECRET.
+  { metodo: "GET", ruta: /^\/api\/cobranza\/barrido$/ },
+  { metodo: "POST", ruta: /^\/api\/cobranza\/barrido$/ },
 ];
 
 const CAMBIA = new Set(["POST", "PUT", "PATCH", "DELETE"]);

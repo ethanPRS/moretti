@@ -197,6 +197,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           minimoPlan: Number(proyecto.minimoPlan),
           fechaEntregaUnidades: proyecto.fechaEntregaUnidades?.toISOString().slice(0, 10) ?? null,
           imagen: proyecto.imagen,
+          stripeConnectedAccountId: proyecto.stripeConnectedAccountId,
         }}
       />
     </div>

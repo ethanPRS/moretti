@@ -43,7 +43,7 @@ export default async function PanelPage() {
   const cobrado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
   const comision = pagos.reduce((acc, p) => acc + Number(p.montoComision), 0);
   const porCobrar = planes
-    .filter((p) => p.estado === EstadoPlan.ACTIVO)
+    .filter((p) => p.estado === EstadoPlan.ACTIVO || p.estado === EstadoPlan.SUSPENDIDO)
     .reduce((acc, p) => acc + Number(p.saldo), 0);
   const cotizaciones = planes.filter((p) => p.estado === EstadoPlan.COTIZADO).length;
 

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { crearPasarelaFalsa } from "@/lib/pasarela/falsa";
 import { marcarComprobanteEmitido } from "./comprobantes";
 import { fechaLimiteComprobante } from "./fiscal";
-import { cobrarAnticipo, cobrarExhibicion, confirmarCobroStripe, darDeAlta } from "./planes";
+import { cobrarAnticipo, cobrarExhibicion, aplicarCobroConfirmado, darDeAlta } from "./planes";
 import { ejecutarAdelanto } from "./versiones";
 import { baseLimpiaConCatalogo, firmarContrato, paquete, unidadLibre } from "@/pruebas/utilidades";
 
@@ -51,21 +51,9 @@ describe("S · cada pago nace con su comprobante pendiente", () => {
     });
     await firmarContrato(unidad.id);
     const anticipo = await prisma.exhibicion.findFirstOrThrow({ where: { planId: plan.id, numero: 0 } });
-    await prisma.intentoCobro.create({
-      data: {
-        exhibicionId: anticipo.id,
-        planId: plan.id,
-        idempotencyKey: "fiscal-stripe",
-        stripePaymentIntentId: "pi_fiscal",
-        stripeAccountId: "acct_prueba",
-        monto: anticipo.monto,
-        porcentajeComision: 0.1,
-        montoComision: 0,
-      },
-    });
-    await confirmarCobroStripe({ paymentIntentId: "pi_fiscal", stripeAccountId: "acct_prueba" });
+    await aplicarCobroConfirmado({ exhibicionId: anticipo.id, referenciaPasarela: "pi_fiscal" });
     // El mismo webhook dos veces: un solo pago, un solo pendiente.
-    await confirmarCobroStripe({ paymentIntentId: "pi_fiscal", stripeAccountId: "acct_prueba" });
+    await aplicarCobroConfirmado({ exhibicionId: anticipo.id, referenciaPasarela: "pi_fiscal" });
     expect(await prisma.comprobanteFiscal.count({ where: { planId: plan.id } })).toBe(1);
   });
 

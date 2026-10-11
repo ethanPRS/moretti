@@ -4,6 +4,7 @@ import { crearPasarelaFalsa } from "@/lib/pasarela/falsa";
 import type { Pasarela } from "@/lib/pasarela";
 import { cobrarAnticipo, darDeAlta } from "./planes";
 import { autorizarTransferencia, retenidoPorProyecto } from "./transferencias";
+import { reembolsarPago, registrarDisputa } from "./movimientos";
 import { baseLimpiaConCatalogo, firmarContrato, paquete, unidadLibre } from "@/pruebas/utilidades";
 
 async function anticipoCobrado() {
@@ -71,5 +72,30 @@ describe("D-34 · la plataforma retiene y Ana Cris autoriza pagar a Moretti", ()
     const proyectoId = await anticipoCobrado();
     await prisma.proyecto.update({ where: { id: proyectoId }, data: { stripeConnectedAccountId: null } });
     await expect(autorizarTransferencia({ proyectoId, autorizadaPor: "Ana Cris" })).rejects.toThrow(/no tiene configurada la cuenta/);
+  });
+
+  it("un pago reembolsado o en disputa no se transfiere: espera a que una persona lo revise", async () => {
+    const proyectoId = await anticipoCobrado();
+    const pago = await prisma.pago.findFirstOrThrow({ where: { plan: { comprador: { unidad: { proyectoId } } } } });
+    await registrarDisputa({
+      referenciaDisputa: "dp_prueba",
+      referenciaPasarela: pago.referenciaStripe!,
+      montoCentavos: 100,
+      motivo: "fraudulent",
+    });
+    expect((await retenidoPorProyecto()).find((r) => r.proyectoId === proyectoId)!.pagos).toBe(0);
+    await expect(autorizarTransferencia({ proyectoId, autorizadaPor: "Ana Cris" }, { pasarela: crearPasarelaFalsa() })).rejects.toThrow(
+      "No hay nada retenido de este proyecto."
+    );
+  });
+
+  it("un pago ya transferido no se reembolsa sin revertir antes la transferencia", async () => {
+    const proyectoId = await anticipoCobrado();
+    const pasarela = crearPasarelaFalsa();
+    await autorizarTransferencia({ proyectoId, autorizadaPor: "Ana Cris" }, { pasarela });
+    const pago = await prisma.pago.findFirstOrThrow({ where: { plan: { comprador: { unidad: { proyectoId } } } } });
+    await expect(
+      reembolsarPago({ pagoId: pago.id, devolverComision: false, motivo: "prueba" }, { pasarela })
+    ).rejects.toThrow(/ya se le transfirió a Moretti/);
   });
 });

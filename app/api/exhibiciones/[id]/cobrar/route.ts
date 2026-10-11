@@ -17,7 +17,12 @@ export async function POST(
         return NextResponse.json({ ok: true, referencia: resultado.referencia });
       case "pendiente":
         return NextResponse.json(
-          { pendiente: true, mensaje: resultado.mensaje, referencia: resultado.referencia },
+          {
+            pendiente: true,
+            mensaje: resultado.mensaje,
+            referencia: resultado.referencia,
+            accion: resultado.accion ?? null,
+          },
           { status: 202 }
         );
       case "rechazado":

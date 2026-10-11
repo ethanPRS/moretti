@@ -7,6 +7,7 @@ import { cotizarEnCatalogo, esFinanciable, type Canasta, type PrototipoCotizable
 import { ReglaError } from "@/lib/motor/errores";
 import { ContenidoBoton } from "@/components/Boton";
 import CobrarConStripe from "@/components/pagos/CobrarConStripe";
+import { usarTokenApartado } from "@/lib/pasarela/cliente";
 
 const mx = (n: number) => "$" + n.toLocaleString("es-MX");
 
@@ -60,6 +61,8 @@ export default function Apartado({
   const [acepta, setAcepta] = useState(false);
   const [firma, setFirma] = useState("");
   const [folio, setFolio] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [pagado, setPagado] = useState(false);
   const [resumenServidor, setResumenServidor] = useState<ResumenServidor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -128,6 +131,8 @@ export default function Apartado({
       }
       setResumenServidor(data.resumen as ResumenServidor);
       setFolio(data.folio);
+      setPlanId(data.planId);
+      usarTokenApartado(data.token ?? null);
       setPaso("pago");
     } catch {
       setError("No hubo respuesta del servidor. Revisa tu conexión antes de volver a firmar.");
@@ -301,25 +306,26 @@ export default function Apartado({
             </form>
           )}
 
-          {paso === "pago" && resumenServidor && (
+          {paso === "pago" && resumenServidor && planId && (
             <div className="flex flex-col gap-5">
               <div>
                 <p className="eyebrow">Contrato firmado · folio {folio}</p>
-                <h1 className="mt-2 text-[28px]">Anticipo de {mx(resumenServidor.exhibiciones[0].monto)}.</h1>
+                <h1 className="mt-2 text-[28px]">
+                  {pagado ? "Tu departamento quedó apartado." : `Anticipo de ${mx(resumenServidor.exhibiciones[0].monto)}.`}
+                </h1>
                 <p className="mt-1.5 text-ink-2">
-                  El calendario e importes siguientes provienen del plan registrado por el servidor.
+                  {pagado
+                    ? "Las mensualidades se cargan a esta tarjeta en las fechas del calendario."
+                    : "Registra la tarjeta con la que pagas el anticipo y, después, las mensualidades. Stripe está en modo prueba: no se cobra dinero real."}
                 </p>
               </div>
-              <div className="note blocked" role="status">
-                Stripe está en modo prueba. El servidor aún no crea un SetupIntent ni guarda el consentimiento
-                para cargos fuera de sesión; por eso el cobro queda deshabilitado y no se marcará como pagado.
-              </div>
               <CobrarConStripe
+                planId={planId}
                 exhibicionId={resumenServidor.exhibiciones[0].id}
-                esAnticipo
                 bloqueado={false}
                 stripeTestConfigurado={stripeTestConfigurado}
-                bloqueoCobro="Pendiente de backend: SetupIntent o PaymentIntent con uso off_session y registro servidor del consentimiento."
+                tarjetaRegistrada={null}
+                onPagado={() => setPagado(true)}
               />
             </div>
           )}

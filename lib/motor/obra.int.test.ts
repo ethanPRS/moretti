@@ -7,7 +7,7 @@ import {
   cambiarEstadoFinanciero,
   cobrarAnticipo,
   cobrarExhibicion,
-  confirmarCobroStripe,
+  aplicarCobroConfirmado,
   darDeAlta,
   registrarContrato,
 } from "./planes";
@@ -68,20 +68,8 @@ describe("Q · APARTADO requiere contrato firmado Y anticipo cobrado", () => {
     const { unidad, plan } = await alta();
     await prisma.proyecto.update({ where: { id: unidad.proyectoId }, data: { stripeConnectedAccountId: "acct_prueba" } });
     const anticipo = await prisma.exhibicion.findFirstOrThrow({ where: { planId: plan.id, numero: 0 } });
-    await prisma.intentoCobro.create({
-      data: {
-        exhibicionId: anticipo.id,
-        planId: plan.id,
-        idempotencyKey: "prueba-sin-contrato",
-        stripePaymentIntentId: "pi_sin_contrato",
-        stripeAccountId: "acct_prueba",
-        monto: anticipo.monto,
-        porcentajeComision: 0.1,
-        montoComision: 0,
-      },
-    });
 
-    await confirmarCobroStripe({ paymentIntentId: "pi_sin_contrato", stripeAccountId: "acct_prueba" });
+    await aplicarCobroConfirmado({ exhibicionId: anticipo.id, referenciaPasarela: "pi_sin_contrato" });
 
     expect((await unidadDe(unidad.id)).estadoFinanciero).toBe("COTIZADO");
     expect(await prisma.pago.count({ where: { planId: plan.id } })).toBe(1);
@@ -95,25 +83,13 @@ describe("Q · APARTADO requiere contrato firmado Y anticipo cobrado", () => {
     const { unidad, plan } = await alta();
     await firmarContrato(unidad.id);
     const anticipo = await prisma.exhibicion.findFirstOrThrow({ where: { planId: plan.id, numero: 0 } });
-    await prisma.intentoCobro.create({
-      data: {
-        exhibicionId: anticipo.id,
-        planId: plan.id,
-        idempotencyKey: "prueba-con-contrato",
-        stripePaymentIntentId: "pi_con_contrato",
-        stripeAccountId: "acct_prueba",
-        monto: anticipo.monto,
-        porcentajeComision: 0.1,
-        montoComision: 0,
-      },
-    });
-    await confirmarCobroStripe({ paymentIntentId: "pi_con_contrato", stripeAccountId: "acct_prueba" });
+    await aplicarCobroConfirmado({ exhibicionId: anticipo.id, referenciaPasarela: "pi_con_contrato" });
 
     expect((await unidadDe(unidad.id)).estadoFinanciero).toBe("APARTADO");
     const paso = await prisma.evento.findFirstOrThrow({
       where: { entidadId: unidad.id, tipo: "estado_financiero_cambiado" },
     });
-    expect(paso.comentario).toBe("Estado financiero: Cotizado → Apartado porque Stripe confirmó el anticipo.");
+    expect(paso.comentario).toBe("Estado financiero: Cotizado → Apartado porque se cobró el anticipo.");
   });
 });
 

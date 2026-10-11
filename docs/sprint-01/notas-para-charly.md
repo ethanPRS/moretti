@@ -97,6 +97,19 @@ Lo que propongo cambiar (para hablarlo, no son órdenes):
 | 7 | `payment_intent.payment_failed` | Guarda el código en `IntentoCobro` pero no deja evento en la bitácora ni sube el intento del motor. Criterio 5 del objetivo: «el rechazo queda en la bitácora». | Llamar a `registrarCobroRechazado`. |
 | 8 | `create-payment-intent` | `capture_method` no se manda; S1-07 pide que sea configurable. | Variable de entorno (propuesta: `STRIPE_CAPTURE_METHOD=automatic\|manual`), documentada en `docs/parametros.md`. |
 
+### Estado al 5 de octubre (rama `charly/stripe-pasarela`)
+
+| # | Estado |
+|---|---|
+| 1 | Hecho: la llave es `llaveIdempotencia()` con el intento del motor (`lib/pasarela/stripe.ts`). |
+| 2 | Hecho: `create-payment-intent` se borró; todo cobro pasa por `pasarelaStripe.cobrar` vía el motor. |
+| 3 | Hecho: el webhook llama a `aplicarCobroConfirmado`; `confirmarCobroStripe` se borró. |
+| 4 | Hecho: `api/exhibiciones/[id]/cobrar` es la ruta del motor (200/202/402) y la usa el back office para las mensualidades. |
+| 5 | **No**: el webhook sigue procesando antes de contestar. Procesar es rápido y, si falla, el 500 hace que Stripe reintente; con `after()` un fallo se perdería sin reintento. Para hablarlo. |
+| 6 | Hecho: P2002 en `EventoStripe` se trata como reenvío. |
+| 7 | Hecho: `payment_failed` llama a `registrarCobroRechazado`. |
+| 8 | **No**: `capture_method` sigue automático. Captura manual necesita una pantalla para capturar o liberar; queda para después. |
+
 La tabla `IntentoCobro` no choca con nada de lo de Ethan: guarda el ciclo del
 PaymentIntent y le sirve al webhook. `Exhibicion.intentosRechazados` (D-13)
 es sólo el contador con el que el motor arma la llave.

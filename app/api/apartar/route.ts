@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { darDeAlta, registrarContrato, ReglaError } from "@/lib/motor/planes";
 import { limiteApartar } from "@/lib/limite-intentos";
 import { ipCliente } from "@/lib/ip";
+import { tokenApartado } from "@/lib/apartado";
 
 /**
  * El comprador aparta desde el sitio: se da de alta con su canasta y firma el
@@ -82,6 +83,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         planId: plan.id,
+        // Para guardar la tarjeta y cobrar el anticipo de este plan (H-2).
+        token: await tokenApartado(plan.id),
         folio: comprador.folio,
         resumen: {
           proyecto: unidad.proyecto.nombre,

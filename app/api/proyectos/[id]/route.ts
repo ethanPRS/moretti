@@ -31,6 +31,13 @@ const Cambios = z.object({
   minimoPlan: z.coerce.number().int("El mínimo va en pesos enteros, sin centavos.").min(0),
   fechaEntregaUnidades: z.string().nullish(),
   imagen: z.string().startsWith("/").nullish(),
+  // La cuenta conectada de Moretti para este proyecto: ahí cae el cargo directo.
+  stripeConnectedAccountId: z
+    .string()
+    .trim()
+    .regex(/^acct_[A-Za-z0-9]+$/, "La cuenta conectada de Stripe empieza con acct_.")
+    .nullish()
+    .or(z.literal("")),
 });
 
 /**
@@ -54,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       minimoPlan: d.minimoPlan,
       fechaEntregaUnidades: d.fechaEntregaUnidades ? new Date(`${d.fechaEntregaUnidades}T12:00:00`) : null,
       imagen: d.imagen ?? null,
+      stripeConnectedAccountId: d.stripeConnectedAccountId || null,
     },
   });
   return NextResponse.json(proyecto);

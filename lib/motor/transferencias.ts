@@ -1,4 +1,4 @@
-import { EstadoPago, EstadoTransferencia, Prisma } from "@prisma/client";
+import { EstadoDisputa, EstadoPago, EstadoTransferencia, Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { pasarela as pasarelaPorDefecto, type Pasarela } from "../pasarela";
 import { ReglaError, mxc } from "./errores";
@@ -10,13 +10,19 @@ import { ReglaError, mxc } from "./errores";
  * (`pasarela.transferir`).
  *
  * Sólo se transfieren pagos CONFIRMADO. Un pago AJUSTADO (confirmación tardía
- * de un cargo ya revertido) o en disputa queda fuera hasta que una persona
- * lo revise.
+ * de un cargo ya revertido), con algún reembolso, o con una disputa abierta o
+ * perdida queda fuera hasta que una persona lo revise (integración del 11 oct
+ * con los reembolsos y disputas de Charly, D-39).
  */
 
 type Opciones = { pasarela?: Pasarela };
 
-const RETENIDO = { transferenciaId: null, estado: EstadoPago.CONFIRMADO } satisfies Prisma.PagoWhereInput;
+const RETENIDO = {
+  transferenciaId: null,
+  estado: EstadoPago.CONFIRMADO,
+  reembolsos: { none: {} },
+  disputas: { none: { estado: { in: [EstadoDisputa.ABIERTA, EstadoDisputa.PERDIDA] } } },
+} satisfies Prisma.PagoWhereInput;
 
 export type Retenido = {
   proyectoId: string;
