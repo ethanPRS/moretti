@@ -19,12 +19,33 @@
   --amber-soft: #f7efd6;
   --dev: #2e4a6b;
   --dev-soft: #e7eef6;
+  /* Bordes de la maqueta de Ana Cris (5b): 3px en todo. El 11 oct se
+     regresó a este valor desde los bordes medio redondos del 10 sep. */
   --r: 3px;
-  /* Bordes medio redondos: botones en píldora, imágenes y tarjetas suaves. */
-  --r-pill: 999px;
-  --r-img: 14px;
-  --r-card: 12px;
-  --r-input: 10px;
+  --r-pill: var(--r);
+  --r-img: var(--r);
+  --r-card: var(--r);
+  --r-input: var(--r);
+}
+
+/* Modo oscuro, igual que la maqueta. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #161513; --surface: #1e1d1a; --surface-2: #262421;
+    --ink: #eeebe6; --ink-2: #bdb8b0; --muted: #8f8981;
+    --line: #332f2b; --line-2: #453f39;
+    --accent: #84a88f; --accent-soft: #222c25; --warm: #d98a5f; --warm-soft: #2c221c;
+    --amber: #d9a441; --amber-soft: #2b2416;
+    --dev: #8fb2d6; --dev-soft: #1c242e;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #161513; --surface: #1e1d1a; --surface-2: #262421;
+  --ink: #eeebe6; --ink-2: #bdb8b0; --muted: #8f8981;
+  --line: #332f2b; --line-2: #453f39;
+  --accent: #84a88f; --accent-soft: #222c25; --warm: #d98a5f; --warm-soft: #2c221c;
+  --amber: #d9a441; --amber-soft: #2b2416;
+  --dev: #8fb2d6; --dev-soft: #1c242e;
 }
 
 @theme inline {
@@ -42,8 +63,8 @@
   --color-warm-soft: var(--warm-soft);
   --color-dev: var(--dev);
   --color-dev-soft: var(--dev-soft);
-  --font-display: var(--font-poppins);
-  --font-sans: var(--font-poppins);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-karla);
   --font-mono: var(--font-plex-mono);
   --radius-brand: var(--r);
   --radius-pill: var(--r-pill);
@@ -54,8 +75,8 @@
 body {
   background: var(--ground);
   color: var(--ink);
-  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
-  font-size: 16px;
+  font-family: var(--font-karla), "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -120,11 +141,9 @@ section[id] {
 h1,
 h2,
 h3 {
-  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-fraunces), Georgia, serif;
   font-weight: 600;
-  /* Poppins es geométrica y ancha: a tamaño de título pide ir más cerrada. */
-  letter-spacing: -0.025em;
-  line-height: 1.18;
+  line-height: 1.12;
   text-wrap: balance;
   margin: 0;
 }
@@ -151,12 +170,9 @@ h3 {
   color: var(--muted);
 }
 
-/* Cifras de dinero. Ojo: Poppins no trae cifras tabulares, así que
-   `tabular-nums` aquí no surte efecto —el "1" es más angosto que el resto—.
-   Las columnas de montos alinean por ir a la derecha, no por la fuente.
-   Si algún día se necesita alineación real, hay que cambiar de familia. */
+/* Las cifras de dinero van en la serif, con numeración tabular. */
 .figure {
-  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-fraunces), Georgia, serif;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -188,7 +204,7 @@ h3 {
    el componente, tiene el mismo aspecto sin la rueda (el back office). */
 .btn {
   --btn-bg: var(--accent);
-  --btn-bg-hover: var(--ink);
+  --btn-bg-hover: var(--accent);
   --btn-fg: var(--ground);
   --btn-fg-hover: var(--ground);
   --btn-borde: transparent;
@@ -201,13 +217,12 @@ h3 {
   background: var(--btn-bg);
   color: var(--btn-fg);
   border: 1px solid var(--btn-borde);
-  font-family: var(--font-poppins), sans-serif;
-  font-size: 15px;
-  font-weight: 500;
+  font-family: var(--font-karla), sans-serif;
+  font-size: 15.5px;
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.005em;
-  padding: 13px 24px;
-  border-radius: var(--r-pill);
+  padding: 12px 22px;
+  border-radius: var(--r);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -216,6 +231,7 @@ h3 {
     border-color 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .btn:hover {
+  filter: brightness(1.12);
   background: var(--btn-bg-hover);
   color: var(--btn-fg-hover);
   border-color: var(--btn-borde-hover);
@@ -226,19 +242,26 @@ h3 {
   background: var(--btn-bg);
   color: var(--btn-fg);
 }
+/* Maqueta 5b: el botón se aclara al pasar el cursor; la rueda de texto
+   (ContenidoBoton) sí se queda. La flecha en círculo no está en la maqueta. */
 .btn:has(.btn-flecha) {
-  padding-right: 7px;
+  padding-right: 22px;
+}
+.btn .btn-flecha {
+  display: none;
 }
 .btn-warm {
   --btn-bg: var(--warm);
+  --btn-bg-hover: var(--warm);
 }
 /* Secundario */
 .btn-ghost {
   --btn-bg: transparent;
-  --btn-bg-hover: var(--ink);
+  --btn-bg-hover: var(--surface-2);
   --btn-fg: var(--ink);
-  --btn-borde: var(--ink);
-  --btn-borde-hover: var(--ink);
+  --btn-fg-hover: var(--ink);
+  --btn-borde: var(--line-2);
+  --btn-borde-hover: var(--line-2);
 }
 /* Secundario sobre foto u oscuro */
 .btn-claro {
@@ -255,7 +278,7 @@ h3 {
   gap: 8px;
 }
 .btn-sm:has(.btn-flecha) {
-  padding-right: 5px;
+  padding-right: 15px;
 }
 
 /* La rueda: el texto visible sube y su copia (data-text) entra desde abajo. */
@@ -376,7 +399,7 @@ input[type="number"],
 input[type="date"],
 select {
   width: 100%;
-  font-family: var(--font-poppins), sans-serif;
+  font-family: var(--font-karla), sans-serif;
   font-size: 15.5px;
   padding: 10px 14px;
   border: 1px solid #c4bdb1;
@@ -496,7 +519,7 @@ select {
   font-weight: 700;
 }
 .kpi .v {
-  font-family: var(--font-poppins), "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-fraunces), Georgia, serif;
   font-size: 24px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

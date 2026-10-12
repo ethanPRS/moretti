@@ -22,7 +22,7 @@ contra Stripe con sus llaves de prueba.
 
 ## Guion de la demo (borrador, 15 minutos)
 
-1. **Sitio** (2 min): `/cotizar` → «Arma el tuyo» → el total y la mensualidad
+1. **Sitio** (2 min): portada → cotizador → «Arma el tuyo» → el total y la mensualidad
    cambian partida por partida. Debajo del mínimo, el aviso de contado.
 2. **Alta y R1** (2 min): back office → unidad libre → alta. «Cobrar
    anticipo» bloqueado: falta el contrato (criterio 2). Registrar contrato →

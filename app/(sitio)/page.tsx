@@ -1,146 +1,100 @@
 import Image from "next/image";
+import Link from "next/link";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { DESCUENTO_CONTADO } from "@/lib/motor/calculo";
+import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
 import Reveal from "@/components/Reveal";
-import Link from "next/link";
 import { ContenidoBoton } from "@/components/Boton";
+import { Calculadora, Condiciones, ProveedorCotizacion } from "@/components/sitio/Cotizacion";
 
-const PASOS = [
-  {
-    titulo: "Eliges, firmas y apartas",
-    texto:
-      "Escoges tu paquete en el depa muestra, firmas tu contrato con Moretti y das tu anticipo. Tu precio queda congelado hasta la entrega, aunque falten dieciocho meses.",
-  },
-  {
-    titulo: "Pagas cada mes",
-    texto:
-      "Doce mensualidades fijas, sin intereses y sin trámite de crédito. Se cargan solas a tu tarjeta. Puedes adelantar o liquidar cuando quieras.",
-  },
-  {
-    titulo: "Recibes tu depa listo",
-    texto:
-      "Medimos en obra antes de fabricar, e instalamos en cuanto el desarrollador te entrega tu unidad. Firmas el acta de recepción y ahí arranca tu garantía.",
-  },
-];
+/*
+ * La portada con el diseño y el contenido de la maqueta de Ana Cris (5b).
+ * Se dejaron fuera sus secciones internas («Quién ve qué», las pantallas de
+ * ejemplo y el back office simulado): el back office real vive en /admin.
+ * Animaciones: la entrada del hero, la aparición al hacer scroll (Reveal) y
+ * la rueda de texto de los botones, que a Ana Cris sí le gustaron.
+ */
+
+const d = (ms: number) => ({ "--hero-delay": `${ms}ms` }) as React.CSSProperties;
 
 export default async function SitioPage() {
-  // Se arma en cada visita, no al compilar: los precios y el mínimo del
-  // proyecto viven en la base y cambian sin volver a desplegar.
+  // En cada visita: precios, mínimo y unidades libres viven en la base.
   await connection();
-  // El cotizador vive en /cotizar; aquí sólo se muestran los paquetes.
-  const paquetes = await prisma.paquete.findMany({ orderBy: { nivel: "asc" } });
-
-  const armable = paquetes.find((p) => p.esArmable);
+  const [catalogo, paquetes, libres] = await Promise.all([
+    cargarCatalogosPorProyecto(),
+    prisma.paquete.findMany({ orderBy: { nivel: "asc" } }),
+    prisma.unidad.groupBy({ by: ["prototipoId"], where: { comprador: null }, _count: true }),
+  ]);
+  const desarrollos = catalogo.proyectos.filter((p) => p.prototipos.length > 0);
   const cerrados = paquetes.filter((p) => !p.esArmable);
 
   return (
-    <>
-      <section className="relative isolate flex min-h-[clamp(420px,60vh,560px)] items-center overflow-hidden">
-        <Image
-          src="/interior-hero.jpg"
-          alt="Departamento con cocina integral, clima y sala instalados"
-          fill
-          sizes="100vw"
-          className="-z-10 object-cover"
-          priority
-        />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[rgba(20,19,17,0.9)] via-[rgba(20,19,17,0.72)] to-[rgba(20,19,17,0.18)]" />
-
-        <div className="mx-auto w-full max-w-[1080px] px-7 py-16">
-          <p className="eyebrow hero-in text-[#b9cdbe]">
-            Barrio Roble · Barrio Santa Lucía
-          </p>
-          <h1
-            className="hero-in mt-3.5 max-w-[17ch] text-[clamp(32px,4.4vw,52px)] text-[#fbfaf8]"
-            style={{ "--hero-delay": "110ms" } as React.CSSProperties}
-          >
-            Tu depa se entrega en obra blanca. No tiene que quedarse así.
-          </h1>
-          <p
-            className="hero-in mt-5 max-w-[46ch] text-[clamp(16px,1.6vw,19px)] text-[#dcd8d2]"
-            style={{ "--hero-delay": "220ms" } as React.CSSProperties}
-          >
-            Cocina, clósets y clima instalados el día que recibes llaves. Lo pagas en
-            mensualidades fijas mientras se construye, sin banco y sin tocar tu hipoteca.
-          </p>
-          <a
-            href="/cotizar"
-            className="btn hero-in mt-8"
-            style={{ "--hero-delay": "330ms" } as React.CSSProperties}
-          >
-            <ContenidoBoton texto="Cotizar mi depa" flecha />
-          </a>
+    <ProveedorCotizacion>
+      <header className="hero">
+        <div className="hero-img">
+          <Image src="/interior-hero.jpg" alt="Cocina y comedor de un departamento equipado" fill sizes="100vw" className="object-cover" priority />
         </div>
-      </section>
+        <div className="hero-txt">
+          <div className="wrap">
+            <p className="eyebrow hero-in">Barrio Roble · Barrio Santa Lucía</p>
+            <h1 className="hero-in" style={d(110)}>Estrena tu departamento completo desde el día uno.</h1>
+            <p className="hero-in" style={d(220)}>
+              Cocina, clósets y clima instalados el día que recibes llaves. Lo pagas en mensualidades fijas mientras
+              se construye, sin banco y sin tocar tu hipoteca.
+            </p>
+            <a className="btn hero-in" href="#calc" style={{ ...d(330), marginTop: 24 }}>
+              <ContenidoBoton texto="Cotiza tu departamento" />
+            </a>
+          </div>
+        </div>
+      </header>
 
-      <section id="cotiza" className="py-[76px]">
-        <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="card flex flex-wrap items-center justify-between gap-6 bg-ink p-9 text-ground sm:p-12">
-            <div className="max-w-[560px]">
-              <p className="eyebrow text-[#b9cdbe]">Cotiza tu departamento</p>
-              <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-                Dinos cuál es tu depa y te decimos cuánto pagas al mes.
-              </h2>
-              <p className="mt-3 text-[#dcd8d2]">Tres pasos: desarrollo, departamento y paquete.</p>
-            </div>
-            <Link href="/cotizar" className="btn btn-claro">
-              <ContenidoBoton texto="Abrir el cotizador" flecha />
-            </Link>
+      <section id="calc">
+        <div className="wrap">
+          <Reveal className="sec-head narrow">
+            <p className="eyebrow">Cotiza tu departamento</p>
+            <h2>Dinos cuál es tu depa y te decimos cuánto.</h2>
+            <p>Cada prototipo lleva medidas distintas, así que el precio cambia. Elige el tuyo y mueve entre paquetes para comparar.</p>
+          </Reveal>
+          <Reveal delay={80}>
+            <Calculadora
+              desarrollos={desarrollos}
+              armable={catalogo.armable}
+              descuentoContado={DESCUENTO_CONTADO}
+              disponibles={Object.fromEntries(libres.map((l) => [l.prototipoId, l._count]))}
+            />
           </Reveal>
         </div>
       </section>
 
-      <section id="paquetes" className="bg-surface-2 py-[76px]">
-        <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="max-w-[660px]">
+      <hr className="rule" />
+
+      <section id="paquetes" className="alt">
+        <div className="wrap">
+          <Reveal className="sec-head narrow">
             <p className="eyebrow">Los paquetes</p>
-            <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Cuatro niveles, o armas el tuyo.
-            </h2>
+            <h2>Cuatro niveles que se acumulan, y uno que armas tú.</h2>
           </Reveal>
-
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {cerrados.map((p, i) => {
-              const heredadas = cerrados.slice(0, i).flatMap((prev) => prev.partidas);
+          <div className="pks">
+            {paquetes.map((p, i) => {
+              const heredadas = p.esArmable ? [] : cerrados.slice(0, cerrados.indexOf(p)).flatMap((x) => x.partidas);
               return (
-                <Reveal key={p.id} delay={i * 90} className="flex">
-                  <article className="card lift flex flex-1 flex-col overflow-hidden">
-                    {p.imagen && (
-                      <div className="relative aspect-[4/3] bg-surface-2">
-                        <Image
-                          src={p.imagen}
-                          alt={`Interior con el paquete ${p.nombre}`}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="flex flex-1 flex-col gap-3 p-5">
-                      <div>
-                        <p className="eyebrow">Paquete 0{p.nivel}</p>
-                        <h3 className="mt-1.5 text-[23px]">{p.nombre}</h3>
-                        <p className="mt-1 text-[13.5px] text-muted">{p.descripcion}</p>
-                      </div>
-                      <ul className="flex flex-col gap-1.5 border-t border-line pt-3.5 text-[14px]">
-                        {heredadas.map((partida) => (
-                          <li key={partida} className="relative pl-4 text-muted">
-                            <span className="absolute left-0 text-line-2">·</span>
-                            {partida}
-                          </li>
-                        ))}
-                        {p.partidas.map((partida) => (
-                          <li key={partida} className="relative pl-4 font-semibold text-ink">
-                            <span className="absolute left-0 font-bold text-accent">+</span>
-                            {partida}
-                          </li>
-                        ))}
+                <Reveal key={p.id} delay={i * 80}>
+                  <article className="pk">
+                    <div className="pk-img">
+                      {p.imagen && <Image src={p.imagen} alt="" fill sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 20vw" className="object-cover" />}
+                    </div>
+                    <div className="pk-body">
+                      <p className="pk-n">Paquete 0{p.nivel}</p>
+                      <h3>{p.nombre}</h3>
+                      <p className="pk-sub">{p.descripcion}</p>
+                      <ul className="pk-list">
+                        {heredadas.map((x) => <li key={x} className="old">{x}</li>)}
+                        {p.partidas.map((x) => <li key={x} className="new">{x}</li>)}
                       </ul>
-                      <Link
-                        href={`/paquetes/${p.slug}`}
-                        className="btn btn-ghost btn-sm mt-auto self-start"
-                      >
-                        <ContenidoBoton texto="Ver qué incluye" flecha />
+                      <Link href={`/paquetes/${p.slug}`} className="btn btn-ghost">
+                        <ContenidoBoton texto="Ver qué incluye" />
                       </Link>
                     </div>
                   </article>
@@ -148,96 +102,121 @@ export default async function SitioPage() {
               );
             })}
           </div>
-
-          {armable && (
-            <Reveal className="mt-5" delay={120}>
-              <article className="card lift grid overflow-hidden md:grid-cols-[1fr_1.4fr]">
-                {armable.imagen && (
-                  <div className="relative aspect-[4/3] bg-surface-2 md:aspect-auto">
-                    <Image
-                      src={armable.imagen}
-                      alt={`Interior con el paquete ${armable.nombre}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 40vw"
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex flex-col gap-4 p-7 sm:p-9">
-                  <div>
-                    <p className="eyebrow text-warm">Paquete 0{armable.nivel} · a tu medida</p>
-                    <h3 className="mt-1.5 text-[27px]">{armable.nombre}</h3>
-                    <p className="mt-1.5 max-w-[52ch] text-ink-2">
-                      Sin cocina. Marca solo lo que quieras, pieza por pieza, a precio de
-                      lista. Tú decides cuántos climas lleva tu depa.
-                    </p>
-                  </div>
-                  <ul className="grid gap-1.5 border-t border-line pt-4 text-[14px] sm:grid-cols-2">
-                    {armable.partidas.map((partida) => (
-                      <li key={partida} className="relative pl-4 text-ink">
-                        <span className="absolute left-0 font-bold text-warm">+</span>
-                        {partida}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto flex flex-wrap gap-3 pt-2">
-                    <a href="/cotizar" className="btn btn-warm btn-sm">
-                      <ContenidoBoton texto="Armar el mío" flecha />
-                    </a>
-                    <Link href={`/paquetes/${armable.slug}`} className="btn btn-ghost btn-sm">
-                      <ContenidoBoton texto="Ver qué incluye" flecha />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            </Reveal>
-          )}
+          <p className="disclaimer" style={{ marginTop: 18, maxWidth: "72ch" }}>
+            Cualquier partida del catálogo se puede <b>agregar</b> a un paquete a precio de lista. Si <b>quitas</b> una
+            partida de un paquete, lo que queda se cobra pieza por pieza, también a precio de lista. El plan a 12 meses
+            aplica desde $50,000; abajo de eso, de contado.
+          </p>
         </div>
       </section>
 
-      <section id="como" className="py-[76px]">
-        <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="max-w-[660px]">
+      <section id="como">
+        <div className="wrap">
+          <Reveal className="sec-head narrow">
             <p className="eyebrow">Cómo funciona</p>
-            <h2 className="mt-2.5 text-[clamp(25px,3.2vw,35px)]">
-              Pagas mientras se construye. Recibes todo instalado.
-            </h2>
+            <h2>Pagas mientras se construye. Recibes todo instalado.</h2>
           </Reveal>
-
-          <div className="mt-9 grid gap-9 sm:grid-cols-3">
-            {PASOS.map((paso, i) => (
-              <Reveal key={paso.titulo} delay={i * 110}>
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft font-semibold text-accent">
-                  {i + 1}
-                </div>
-                <h3 className="mt-3.5 text-[21px]">{paso.titulo}</h3>
-                <p className="mt-2 text-[15.5px] text-ink-2">{paso.texto}</p>
-              </Reveal>
-            ))}
+          <div className="pasos">
+            <Reveal className="paso">
+              <div className="dot">1</div>
+              <h3>Eliges, firmas y apartas</h3>
+              <p>Escoges tu paquete, <b>lees y aceptas las condiciones</b>, firmas tu contrato con Moretti y das tu anticipo. Tu precio queda congelado hasta la entrega, aunque falten dieciocho meses.</p>
+            </Reveal>
+            <Reveal className="paso" delay={110}>
+              <div className="dot">2</div>
+              <h3>Pagas cada mes</h3>
+              <p>Doce mensualidades fijas, sin intereses y sin trámite de crédito. Se cargan solas a tu tarjeta y te avisamos antes de cada una.</p>
+            </Reveal>
+            <Reveal className="paso" delay={220}>
+              <div className="dot">3</div>
+              <h3>Recibes tu depa listo</h3>
+              <p>Medimos en obra antes de fabricar, e instalamos en cuanto el desarrollador te entrega tu unidad. Firmas el acta de recepción y ahí arranca tu garantía. Estrenas departamento, no obra blanca.</p>
+            </Reveal>
           </div>
         </div>
       </section>
 
-      <section className="pb-[76px]">
-        <div className="mx-auto max-w-[1080px] px-7">
-          <Reveal className="card flex flex-col items-start gap-5 bg-surface-2 p-10 sm:p-12">
-            <div>
-              <p className="eyebrow">Aparta tu paquete</p>
-              <h2 className="mt-2.5 max-w-[20ch] text-[clamp(25px,3.2vw,35px)]">
-                Se aparta el mismo día que compras tu departamento.
-              </h2>
-              <p className="mt-3 max-w-[58ch] text-ink-2">
-                Firmas tu contrato con Moretti, das tu anticipo y tu precio queda
-                congelado hasta la entrega. Te contactamos para agendar la visita al depa
-                muestra.
-              </p>
-            </div>
-            <a href="/cotizar" className="btn">
-              <ContenidoBoton texto="Cotizar mi depa" flecha />
-            </a>
+      <section id="registro" className="alt">
+        <div className="wrap narrow">
+          <Reveal className="sec-head">
+            <p className="eyebrow">Aparta tu paquete</p>
+            <h2>Antes de decir que sí, lee esto.</h2>
+            <p>Son ocho puntos. Es lo mismo que dice tu contrato, en corto. Cuando los marques todos, seguimos con tus datos y la firma.</p>
+          </Reveal>
+          <Reveal delay={80}>
+            <Condiciones />
           </Reveal>
         </div>
       </section>
-    </>
+
+      <section className="tight">
+        <div className="wrap">
+          <Reveal className="sec-head narrow">
+            <p className="eyebrow">Los cuatro momentos que definen todo</p>
+            <h2>Cuándo se firma, cuándo se congela el precio y cuándo ya no hay cambios.</h2>
+          </Reveal>
+          <Reveal className="momentos">
+            <div><p className="mm">Día 0</p><b>Firma el contrato</b><p>Con Moretti, antes de pagar. Sin contrato firmado el sistema no cobra: un cobro sin contrato es dinero que hay que devolver.</p></div>
+            <div className="on"><p className="mm">Día 0</p><b>Paga el anticipo</b><p>Es el acto que activa todo. Aquí se congela el precio y se aparta el lugar en producción. Antes de esto no hay nada apartado.</p></div>
+            <div><p className="mm">Día 5 hábil</p><b>Cierra el arrepentimiento</b><p>Hasta ese día puede echarse para atrás y se le devuelve todo, sin penalización. Después, aplica lo que diga el contrato.</p></div>
+            <div className="on"><p className="mm">Mes ~15</p><b>Levantamiento en obra</b><p>Se mide su cocina real. <b>Después de esta fecha ya no hay cambio de paquete ni de acabados</b>, porque el material ya se comprometió.</p></div>
+          </Reveal>
+          <Reveal className="fiscal">
+            <b>Y la factura, aunque no haya terminado de pagar.</b>
+            <p>Como el producto y el precio ya están definidos al firmar, los pagos no son anticipos: son parcialidades. Moretti emite una factura por el total al momento de la operación, con método de pago en parcialidades, y después un complemento de pago por cada mensualidad cobrada. El comprador tiene su comprobante desde el día uno, aunque le falten once mensualidades. Y cada complemento tiene fecha límite de ley: el quinto día natural del mes siguiente al del pago. Emitirlos le toca a Moretti; <b>vigilar que no se pase ninguno le toca al sistema</b>, que marca cada cobro como pendiente hasta que tiene su folio registrado.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section id="supervision" className="alt">
+        <div className="wrap">
+          <Reveal className="sec-head narrow">
+            <p className="eyebrow">Supervisión y medidas</p>
+            <h2>Nadie mide su propio trabajo.</h2>
+            <p>Entre que el comprador aparta y que recibe su cocina pasan dieciocho meses y una obra entera. Por eso hay un tercero que mide en sitio, verifica la instalación y firma la entrega: ni el fabricante ni el desarrollador.</p>
+          </Reveal>
+          <div className="pasos">
+            <Reveal className="paso">
+              <div className="dot">1</div>
+              <h3>Se mide en obra</h3>
+              <p>Cuando el desarrollador entrega la unidad, un verificador independiente toma las medidas reales de la cocina y los clósets. Los planos no traen cotas de fabricante y una cocina se hace al milímetro. <b>Esta fecha cierra los cambios:</b> después ya no hay cambio de paquete ni de acabados, porque el material se compromete.</p>
+            </Reveal>
+            <Reveal className="paso" delay={110}>
+              <div className="dot">2</div>
+              <h3>Se fabrica e instala</h3>
+              <p>Moretti produce sobre la medida real, no sobre el render, e instala en el plazo pactado desde que el desarrollador entrega llaves. El mismo verificador revisa avance y calidad durante la instalación, y lo que encuentra queda en el expediente de la unidad.</p>
+            </Reveal>
+            <Reveal className="paso" delay={220}>
+              <div className="dot">3</div>
+              <h3>Se recibe con acta</h3>
+              <p>Lista de verificación punto por punto, fotos de cada área y <b>acta firmada</b> por el comprador. Sin acta, la unidad no se da por entregada — y la garantía arranca en esa fecha, no antes.</p>
+            </Reveal>
+          </div>
+          <Reveal className="fiscal">
+            <b>Quién verifica</b>
+            <p>Un despacho de arquitectura independiente, ajeno al fabricante y al desarrollador (por confirmar). No fabrica ni instala: mide, verifica y levanta el acta. Es la figura que hace que el comprador tenga a quién llamar y que nadie termine calificando su propio trabajo.</p>
+          </Reveal>
+          <Reveal className="owns">
+            <div><b>Lo que resuelve para el fabricante</b><p>Fabrica sobre medidas tomadas en obra y no sobre planos: menos reprocesos, menos ajustes en sitio y una entrega documentada que cierra la discusión antes de que empiece.</p></div>
+            <div className="no"><b>Lo que resuelve para el desarrollador</b><p>La calidad del equipamiento dentro de su edificio queda verificada por un tercero, y las incidencias se resuelven en el expediente de la unidad, sin llegar a su mesa de posventa.</p></div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="cierre">
+        <div className="wrap">
+          <Reveal>
+            <div className="brand">dia<em>´</em>uno</div>
+            <p>Todos los días es tu día uno.</p>
+            <div className="lock">
+              <span className="con">fabrica, instala y garantiza</span>
+              <span className="sep" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- logo pequeño, igual que en la maqueta */}
+              <img src="/moretti-style.png" alt="Moretti Style" />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </ProveedorCotizacion>
   );
 }

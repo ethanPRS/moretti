@@ -612,3 +612,22 @@ la otra) · **Sustituida**.
   hagan Ethan y Charly juntos, con la cuenta real verificada.
 - **Propuesta para el lunes:** `docs/sprint-03/prueba-dinero-real.md`
   (monto, pasos, quién hace qué y cómo se devuelve el dinero).
+
+## D-45 · El sitio regresa al diseño de la maqueta de Ana Cris
+
+- **Fecha / quién:** 11 oct · Ana Cris (vía Ethan); hecho por Claude.
+- **Lo que pidió:** regresar al diseño de su HTML («5b - Maqueta del sitio»),
+  conservando las animaciones, que sí le gustaron.
+- **Qué se regresó:** Fraunces + Karla (en lugar de Poppins), bordes de 3 px
+  en todo (en lugar de píldoras y tarjetas redondeadas), botones de la
+  maqueta, modo oscuro, el logo «dia´uno con Moretti Style» y la portada con
+  sus secciones y textos: hero, cotizador en la misma página, paquetes,
+  cómo funciona, las ocho condiciones antes de apartar, los cuatro momentos,
+  supervisión y el cierre.
+- **Qué se quedó:** la entrada del hero, la aparición al hacer scroll y la
+  rueda de texto de los botones. El cotizador usa el mismo cálculo del
+  motor, y al aceptar las ocho condiciones sigue a `/apartar` con lo elegido.
+- **Qué no se copió:** las secciones internas de la maqueta («Quién ve qué»,
+  pantallas de ejemplo, back office simulado): el back office real está en
+  `/admin`. `/cotizar` y `/landing` siguen existiendo, pero ya no se enlazan
+  desde el sitio.
