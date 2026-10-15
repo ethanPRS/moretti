@@ -28,21 +28,30 @@ export default function AutorizarForm({ proyectoId, neto }: { proyectoId: string
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input value={quien} onChange={(e) => setQuien(e.target.value)} placeholder="Quién autoriza" aria-label="Quién autoriza" />
+    <div className="bo-autoriza">
       {confirmar ? (
         <>
+          <p className="text-[13px] text-ink-2">
+            <b>{quien}</b> autoriza pagar <b>{neto}</b> a Moretti. ¿Seguimos?
+          </p>
           <button type="button" onClick={enviar} disabled={cargando} className="btn btn-sm">
             {cargando ? "Transfiriendo…" : `Sí, transferir ${neto}`}
           </button>
-          <button type="button" onClick={() => setConfirmar(false)} className="btn btn-sm btn-ghost">
+          <button type="button" onClick={() => setConfirmar(false)} disabled={cargando} className="btn btn-sm btn-ghost">
             Cancelar
           </button>
         </>
       ) : (
-        <button type="button" onClick={() => setConfirmar(true)} disabled={!quien.trim()} className="btn btn-sm">
-          Pagar a Moretti
-        </button>
+        <form
+          className="bo-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (quien.trim()) setConfirmar(true);
+          }}
+        >
+          <input value={quien} onChange={(e) => setQuien(e.target.value)} placeholder="¿Quién autoriza?" aria-label="Quién autoriza" />
+          <button disabled={!quien.trim()}>Pagar a Moretti</button>
+        </form>
       )}
     </div>
   );

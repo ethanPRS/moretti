@@ -652,3 +652,17 @@ la otra) · **Sustituida**.
 - **Los cuatro momentos y supervisión:** regla con las fechas grandes,
   factura en tres fichas, tarjetas con ícono y «Quién verifica» con un
   diagrama fabricante · verificador · desarrollador. Textos al «tú».
+
+## D-47 · Cobranza, Fiscal y Pagos a Moretti con un mismo lenguaje visual
+
+- **Fecha / quién:** 14 oct · Ethan; hecho por Claude.
+- **Qué cambió:** las tres pantallas abren con un resumen (la cifra principal
+  destacada), una franja de estado («Todo en orden» o lo que hay que
+  atender) y filas tipo tarjeta en lugar de tablas.
+- **Cobranza:** la cartera de cada proyecto es una barra (al corriente,
+  apartados, liquidados, suspendidos, sin vender) con las cifras del mes.
+- **Fiscal:** cuenta regresiva a la próxima fecha límite; el folio se pega en
+  la misma fila del comprobante.
+- **Pagos a Moretti:** cada proyecto se lee como cobrado − comisión = a
+  transferir; autorizar pide el nombre y confirma el monto antes de enviar.
+- **Sin cambios de lógica:** mismas consultas, mismas rutas de API.

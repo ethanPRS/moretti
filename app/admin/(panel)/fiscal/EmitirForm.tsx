@@ -27,18 +27,16 @@ export default function EmitirForm({ id }: { id: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2">
+    <form onSubmit={onSubmit} className="bo-form">
       <input
         value={folio}
         onChange={(e) => setFolio(e.target.value)}
         placeholder="Folio fiscal (UUID)"
         aria-label="Folio fiscal"
-        className="min-w-0 font-mono text-[12px]"
+        className="font-mono"
         required
       />
-      <button disabled={cargando || !folio} className="btn btn-sm shrink-0">
-        {cargando ? "…" : "Emitido"}
-      </button>
+      <button disabled={cargando || !folio}>{cargando ? "Guardando…" : "Marcar emitido"}</button>
     </form>
   );
 }

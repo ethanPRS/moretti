@@ -506,3 +506,127 @@
 .graf-leyenda b { font-variant-numeric: tabular-nums; font-weight: 600; }
 .graf-muestra { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .graf-vacia { padding: 18px 0; color: var(--muted); font-size: 14px; }
+
+/* ── Cobranza, Fiscal y Pagos a Moretti (D-47): un mismo lenguaje ─────── */
+/* El resumen de arriba: una cifra protagonista y sus acompañantes. */
+.bo-hero { display: grid; grid-template-columns: 1.35fr repeat(3, 1fr); border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.bo-hero > div { padding: 22px 24px; min-width: 0; }
+.bo-hero > div + div { border-left: 1px solid var(--line); }
+.bo-hero .bo-principal { background: var(--accent); color: var(--ground); }
+.bo-hero .bo-principal .bo-k { color: color-mix(in srgb, var(--ground) 75%, transparent); }
+.bo-k { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.bo-v { margin-top: 8px; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.bo-principal .bo-v { font-size: 36px; }
+.bo-v.alerta { color: var(--warm); }
+.bo-nota { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.bo-principal .bo-nota { color: color-mix(in srgb, var(--ground) 70%, transparent); }
+
+/* Una franja de estado: verde si todo va bien, terracota si hay algo. */
+.bo-estado { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 14px; background: var(--accent-soft); color: var(--ink); }
+.bo-estado.atencion { background: var(--warm-soft); }
+.bo-estado-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--ground); }
+.bo-estado.atencion .bo-estado-ico { background: var(--warm); }
+.bo-estado-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.bo-estado b { display: block; font-size: 15px; }
+.bo-estado > div > span { font-size: 13.5px; color: var(--ink-2); }
+
+.bo-seccion { display: flex; flex-direction: column; gap: 12px; }
+.bo-seccion-t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.bo-seccion-t h2 { font-size: 19px; font-weight: 600; margin: 0; }
+.bo-seccion-t span { font-size: 13px; color: var(--muted); }
+
+.bo-card { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 22px 24px; }
+
+/* Filas tipo lista: iniciales, quién, qué, cuánto y la acción. */
+.bo-lista { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.bo-fila { display: grid; grid-template-columns: 38px minmax(0, 1.4fr) minmax(0, 1fr) 110px minmax(280px, 1.3fr); align-items: center; gap: 16px; padding: 14px 20px; }
+.bo-fila + .bo-fila { border-top: 1px solid var(--line); }
+.bo-fila:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+a.bo-fila { color: inherit; }
+.bo-ini { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.bo-quien b { display: block; font-size: 14.5px; font-weight: 600; }
+.bo-quien span { font-size: 12.5px; color: var(--muted); }
+.bo-que { font-size: 13.5px; color: var(--ink-2); }
+.bo-que small { display: block; font-size: 12px; color: var(--muted); }
+.bo-monto { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Formulario en línea: el campo y su botón, pegados. */
+.bo-form { display: flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 10px; background: var(--ground); overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+.bo-form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.bo-form input { flex: 1; min-width: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 9px 12px !important; font-size: 13px; outline: none; }
+.bo-form button { flex: none; border: 0; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 600; background: var(--accent); color: var(--ground); cursor: pointer; transition: opacity 0.2s; }
+.bo-form button:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
+
+/* Cobranza: la cartera de cada proyecto como una barra. */
+.bo-proy { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 28px; }
+.bo-proy-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.bo-proy-cab h3 { font-size: 18px; margin: 0; }
+.bo-proy-cab p { font-size: 13.5px; color: var(--ink-2); }
+.bo-proy-cab p b { font-size: 15px; color: var(--ink); }
+.bo-barra { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+.bo-barra > i { display: block; height: 100%; }
+.bo-leyenda { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.bo-leyenda span { display: inline-flex; align-items: center; gap: 7px; }
+.bo-leyenda i { width: 10px; height: 10px; border-radius: 3px; }
+.bo-leyenda b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.c-corriente { background: var(--accent); }
+.c-apartado { background: color-mix(in srgb, var(--accent) 45%, var(--surface)); }
+.c-liquidado { background: var(--dev); }
+.c-suspendido { background: var(--warm); }
+.c-libre { background: var(--line-2); }
+.bo-mes { border-left: 1px solid var(--line); padding-left: 28px; display: grid; gap: 12px; align-content: start; }
+.bo-mes-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13.5px; color: var(--ink-2); }
+.bo-mes-fila b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bo-mes-fila b.alerta { color: var(--warm); }
+
+/* Pagos a Moretti: la cuenta cobrado − comisión = a transferir. */
+.bo-cuenta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.bo-cuenta > div { min-width: 0; }
+.bo-cuenta .bo-v { font-size: 22px; margin-top: 4px; }
+.bo-cuenta .op { font-size: 22px; color: var(--muted); font-weight: 300; }
+.bo-cuenta .total .bo-v { color: var(--accent); font-size: 26px; }
+.bo-mor { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; }
+.bo-mor-cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.bo-mor-cab h3 { font-size: 18px; margin: 0; }
+.bo-mor-cab span { font-size: 13px; color: var(--muted); }
+.bo-falta { display: flex; align-items: center; gap: 10px; max-width: 280px; padding: 12px 14px; border-radius: 12px; background: var(--warm-soft); font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.bo-falta svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--warm); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bo-nada { font-size: 13.5px; color: var(--muted); }
+.bo-autoriza { display: grid; gap: 8px; width: 300px; }
+.bo-autoriza .btn { width: 100%; justify-content: center; }
+
+/* Historial como línea de tiempo. */
+.bo-hist { list-style: none; margin: 0; padding: 0; }
+.bo-hist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px 20px; }
+.bo-hist li + li { border-top: 1px solid var(--line); }
+.bo-hist-punto { width: 10px; height: 10px; border-radius: 50%; }
+.bo-hist-punto.ok { background: var(--accent); }
+.bo-hist-punto.warn { background: var(--amber); }
+.bo-hist-punto.late { background: var(--warm); }
+
+/* Fiscal: la próxima fecha límite, con su cuenta regresiva. */
+.bo-limite { display: flex; align-items: center; gap: 22px; }
+.bo-limite-dias { flex: none; width: 78px; height: 78px; border-radius: 18px; display: grid; place-items: center; align-content: center; background: var(--accent-soft); color: var(--accent); }
+.bo-limite-dias.warn { background: var(--amber-soft); color: var(--amber); }
+.bo-limite-dias.late { background: var(--warm-soft); color: var(--warm); }
+.bo-limite-dias b { font-size: 30px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bo-limite-dias span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
+.bo-limite h3 { font-size: 18px; margin: 0 0 4px; }
+.bo-limite p { font-size: 14px; color: var(--ink-2); }
+
+@media (max-width: 1100px) {
+  .bo-hero { grid-template-columns: 1fr 1fr; }
+  .bo-hero > div:nth-child(3) { border-left: 0; }
+  .bo-hero > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  .bo-fila { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .bo-fila .bo-que { display: none; }
+  .bo-fila > :last-child { grid-column: 1 / -1; }
+  .bo-proy { grid-template-columns: 1fr; }
+  .bo-mes { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 18px; }
+  .bo-mor { grid-template-columns: 1fr; }
+  .bo-autoriza { width: 100%; }
+}
+@media (max-width: 600px) {
+  .bo-hero { grid-template-columns: 1fr; }
+  .bo-hero > div + div { border-left: 0; border-top: 1px solid var(--line); }
+}
