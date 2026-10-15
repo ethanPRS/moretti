@@ -1,0 +1,92 @@
+[
+  {
+    "titulo": "Disputa abierta",
+    "datos": {
+      "disputa": {
+        "id": "du_1UQkyIAPCX5nPyx2N55tQrP7",
+        "amount": 5286000,
+        "reason": "fraudulent",
+        "status": "needs_response",
+        "payment_intent": "pi_3UQkyHAPCX5nPyx20IDLZNiF"
+      },
+      "entrega": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "plan": {
+        "estado": "SUSPENDIDO",
+        "disputa": {
+          "estado": "ABIERTA",
+          "monto": "52860"
+        }
+      },
+      "barridoConMensualidadVencida": {
+        "revisadas": 0,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      },
+      "alerta": "ALERTA: el comprador desconoció el anticipo con su banco (du_1UQkyIAPCX5nPyx2N55tQrP7, $52,860.00, motivo: fraudulent). El plan queda suspendido y no se le cobra nada hasta que se resuelva. Moretti tiene que mandar evidencia desde su Dashboard."
+    }
+  },
+  {
+    "titulo": "Disputa ganada",
+    "datos": {
+      "disputa": {
+        "id": "du_1UQkyIAPCX5nPyx2N55tQrP7",
+        "status": "won"
+      },
+      "entrega": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "plan": {
+        "estado": "ACTIVO",
+        "disputa": "GANADA"
+      }
+    }
+  },
+  {
+    "titulo": "Disputa perdida",
+    "datos": {
+      "disputa": {
+        "id": "du_1UQkyTAPCX5nPyx283mUV2z5",
+        "status": "lost",
+        "amount": 5286000,
+        "balance_transactions": [
+          {
+            "amount": -5286000,
+            "fee": 17400,
+            "net": -5303400,
+            "description": "Chargeback withdrawal for ch_3UQkySAPCX5nPyx23yPf5y9x"
+          }
+        ]
+      },
+      "entrega": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "plan": {
+        "estado": "ACTIVO",
+        "disputa": "PERDIDA",
+        "reembolsos": [
+          {
+            "origen": "DISPUTA_PERDIDA",
+            "monto": "52860",
+            "referencia": "du_1UQkyTAPCX5nPyx283mUV2z5"
+          }
+        ]
+      },
+      "movimientos": 0
+    }
+  }
+]

@@ -1,0 +1,168 @@
+[
+  {
+    "titulo": "PaymentIntent del adelanto",
+    "datos": {
+      "id": "pi_3UQkxrAPCX5nPyx208P0qJrz",
+      "status": "succeeded",
+      "amount": 2569500,
+      "currency": "mxn",
+      "customer": "cus_VReGPYJUkMFt6r",
+      "capture_method": "automatic",
+      "transfer_group": "proyecto_cmv9c6kb902lnu7s8z4fnhgtu",
+      "application_fee_amount": null,
+      "description": "día uno · Mensualidad 1 · plan cmv9c6kfl02tgu7s8zdi1g4oo",
+      "metadata": {
+        "comisionCentavos": "385425",
+        "compradorId": "cmv9c6kfi02teu7s8t3rwldbm",
+        "exhibicionId": "cmv9c6msd02ufu7s87rqax3k7",
+        "intento": "1",
+        "numeroExhibicion": "1",
+        "planId": "cmv9c6kfl02tgu7s8zdi1g4oo",
+        "proyectoId": "cmv9c6kb902lnu7s8z4fnhgtu"
+      },
+      "last_payment_error": null
+    }
+  },
+  {
+    "titulo": "Plan versionado",
+    "datos": {
+      "monto": "25695.00",
+      "mensualidadOriginal": 10278,
+      "versionNueva": 2,
+      "versiones": [
+        {
+          "version": 1,
+          "motivo": "Versión original",
+          "saldo": "123340"
+        },
+        {
+          "version": 2,
+          "motivo": "Adelanto de $25,695: paga por adelantado las exhibiciones 1, 2 y abona $5,139 a la 12, que baja a $5,143. Quedan 10 exhibiciones; el monto de las demás no cambia.",
+          "saldo": "123340"
+        }
+      ],
+      "calendario": [
+        {
+          "n": 0,
+          "tipo": "ANTICIPO",
+          "v": 1,
+          "monto": "52860",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 1,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "REEMPLAZADA"
+        },
+        {
+          "n": 1,
+          "tipo": "ADELANTO",
+          "v": 2,
+          "monto": "25695",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 2,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "REEMPLAZADA"
+        },
+        {
+          "n": 3,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 4,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 5,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 6,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 7,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 8,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 9,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 10,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 11,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 12,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10282",
+          "estado": "REEMPLAZADA"
+        },
+        {
+          "n": 12,
+          "tipo": "MENSUALIDAD",
+          "v": 2,
+          "monto": "5143",
+          "estado": "PENDIENTE"
+        }
+      ],
+      "sumaR7Centavos": 17620000
+    }
+  },
+  {
+    "titulo": "Adelanto rechazado: plan restituido",
+    "datos": {
+      "resultado": {
+        "estado": "rechazado",
+        "codigo": "insufficient_funds",
+        "intento": 1,
+        "mensaje": "El banco rechazó el cobro: fondos insuficientes (insufficient_funds). El adelanto sigue pendiente y el rechazo quedó en la bitácora. Se reintenta sola a partir del 18 de octubre de 2026.",
+        "version": 4
+      },
+      "vivasAntes": 10,
+      "vivasDespues": 10
+    }
+  }
+]

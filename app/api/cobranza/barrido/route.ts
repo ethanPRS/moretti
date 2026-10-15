@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { cobrarVencidas } from "@/lib/motor/barrido";
+import { avisarTarjetasPorVencer } from "@/lib/motor/avisos-tarjeta";
 
 /**
  * Dispara el barrido de la cobranza (lib/motor/barrido.ts). Lo llama un cron
@@ -36,7 +37,9 @@ async function barrer(req: NextRequest) {
   if (resultado.errores.length > 0 || resultado.pendientesSinConfirmar.length > 0) {
     console.warn("Barrido de cobranza con avisos:", JSON.stringify(resultado));
   }
-  return NextResponse.json(resultado);
+  // Después de cobrar: avisos de tarjetas por vencer en la bitácora (E4).
+  const avisosTarjeta = await avisarTarjetasPorVencer();
+  return NextResponse.json({ ...resultado, avisosTarjeta });
 }
 
 function autorizado(encabezado: string | null, secreto: string) {

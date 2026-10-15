@@ -1,6 +1,7 @@
 import { EstadoComprobante, EstadoExhibicion, EstadoFinanciero, EstadoPlan } from "@prisma/client";
 import { prisma } from "../prisma";
 import { aFecha, diaEnMexico } from "./fiscal";
+import { cobrosAfectados, etapaTarjeta, textoTarjetaPorVencer } from "./vencimiento-tarjeta";
 
 /**
  * El tablero de cobranza (actividad V): por proyecto, cómo va la cartera, y
@@ -29,7 +30,7 @@ export type ResumenProyecto = {
 };
 
 export type Alerta = {
-  tipo: "vencida" | "suspendido" | "fallido" | "fiscal_vencido";
+  tipo: "vencida" | "suspendido" | "fallido" | "fiscal_vencido" | "tarjeta_por_vencer";
   planId: string;
   comprador: string;
   unidad: string;
@@ -122,6 +123,20 @@ export async function resumenCobranza(hoy = new Date()) {
     }
     if (p.comprador.unidad.estadoFinanciero === EstadoFinanciero.SUSPENDIDO) {
       alertas.push({ tipo: "suspendido", planId: p.id, comprador: p.comprador.nombre, unidad: etiqueta(p), texto: "Plan suspendido" });
+    }
+    // E4: un mes antes de que venza la tarjeta, mientras le queden cobros después.
+    const { tarjetaVenceMes: mes, tarjetaVenceAnio: anio } = p.comprador;
+    if (p.estado === EstadoPlan.ACTIVO && mes && anio && !p.comprador.tarjetaInvalida && etapaTarjeta(mes, anio, hoy)) {
+      const cobrosDespues = cobrosAfectados(p.exhibiciones, mes, anio, hoy);
+      if (cobrosDespues > 0) {
+        alertas.push({
+          tipo: "tarjeta_por_vencer",
+          planId: p.id,
+          comprador: p.comprador.nombre,
+          unidad: etiqueta(p),
+          texto: textoTarjetaPorVencer({ descripcion: p.comprador.tarjetaDescripcion, mes, anio, hoy, cobrosDespues }),
+        });
+      }
     }
   }
   const yaFallido = new Set<string>();

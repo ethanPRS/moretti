@@ -9,6 +9,7 @@ const CHIP: Record<Alerta["tipo"], { clase: string; texto: string }> = {
   suspendido: { clase: "late", texto: "Suspendido" },
   fallido: { clase: "warn", texto: "Cobro rechazado" },
   fiscal_vencido: { clase: "warn", texto: "Fiscal" },
+  tarjeta_por_vencer: { clase: "warn", texto: "Tarjeta por vencer" },
 };
 
 /**
@@ -55,7 +56,7 @@ export default async function CobranzaPage() {
       </div>
 
       {alertas.length === 0 ? (
-        <Estado tipo="ok" titulo="Todo en orden">Nada vencido, suspendido ni rechazado este mes.</Estado>
+        <Estado tipo="ok" titulo="Todo en orden">Nada vencido, suspendido, rechazado ni tarjetas por vencer.</Estado>
       ) : (
         <section className="bo-seccion">
           <Estado tipo="aviso" titulo={`${alertas.length} ${alertas.length === 1 ? "comprador necesita" : "compradores necesitan"} atención`}>
