@@ -1,0 +1,58 @@
+[
+  {
+    "titulo": "Vencimiento guardado",
+    "datos": {
+      "base": {
+        "mes": 10,
+        "anio": 2027,
+        "descripcion": "visa terminación 4242"
+      },
+      "stripe": {
+        "exp_month": 10,
+        "exp_year": 2027,
+        "last4": "4242"
+      }
+    }
+  },
+  {
+    "titulo": "Webhook payment_method.automatically_updated",
+    "datos": {
+      "respuesta": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "antes": {
+        "mes": 10,
+        "anio": 2027
+      },
+      "despues": {
+        "mes": 3,
+        "anio": 2031
+      }
+    }
+  },
+  {
+    "titulo": "Aviso de tarjeta por vencer",
+    "datos": {
+      "tarjetaVence": "10/2026",
+      "alertasDelPlan": [
+        {
+          "tipo": "tarjeta_por_vencer",
+          "planId": "cmv9c6hmo02k9u7s8e8lyiay7",
+          "comprador": "Comprador Escenarios",
+          "unidad": "PRUEBA 11",
+          "texto": "La tarjeta visa terminación 4242 vence el 31/10/2026 (faltan 16 días); quedan 12 cobros programados después. Pídele al comprador que registre otra."
+        }
+      ],
+      "avisoEncontrado": {
+        "tipo": "tarjeta_por_vencer",
+        "planId": "cmv9c6hmo02k9u7s8e8lyiay7",
+        "comprador": "Comprador Escenarios",
+        "unidad": "PRUEBA 11",
+        "texto": "La tarjeta visa terminación 4242 vence el 31/10/2026 (faltan 16 días); quedan 12 cobros programados después. Pídele al comprador que registre otra."
+      }
+    }
+  }
+]

@@ -1,0 +1,196 @@
+[
+  {
+    "titulo": "R1: sin contrato no se cobra",
+    "datos": {
+      "planId": "cmv9c5bk60092u7s8q3ajwb3g",
+      "resultado": "ReglaError: falta el contrato firmado"
+    }
+  },
+  {
+    "titulo": "Tarjeta guardada en la plataforma (SetupIntent)",
+    "datos": {
+      "customer": "cus_VReFyDQkNQAVlz",
+      "payment_method": "pm_1UQkwtAPCX5nPyx2pm10O9wv",
+      "setup_intent": {
+        "id": "seti_1UQkwsAPCX5nPyx2tByqUmsi",
+        "status": "succeeded",
+        "usage": "off_session",
+        "metadata": {
+          "compradorId": "cmv9c5bj90089u7s89xgajp63",
+          "consentimiento": "cargos_mensualidades_fuera_de_sesion",
+          "proyectoId": "cmv9c5bey000iu7s80se4v0zh"
+        }
+      },
+      "tarjeta": {
+        "referenciaTarjeta": "pm_1UQkwtAPCX5nPyx2pm10O9wv",
+        "descripcion": "visa terminación 4242",
+        "venceMes": 10,
+        "venceAnio": 2027
+      }
+    }
+  },
+  {
+    "titulo": "PaymentIntent del anticipo",
+    "datos": {
+      "id": "pi_3UQkwuAPCX5nPyx20ixhWn7r",
+      "status": "succeeded",
+      "amount": 5286000,
+      "currency": "mxn",
+      "customer": "cus_VReFyDQkNQAVlz",
+      "capture_method": "automatic",
+      "transfer_group": "proyecto_cmv9c5bey000iu7s80se4v0zh",
+      "application_fee_amount": null,
+      "description": "día uno · Anticipo · plan cmv9c5bjb008bu7s8f8wyzur2",
+      "metadata": {
+        "comisionCentavos": "792900",
+        "compradorId": "cmv9c5bj90089u7s89xgajp63",
+        "exhibicionId": "cmv9c5bjc008hu7s85zqg1o0c",
+        "intento": "1",
+        "numeroExhibicion": "0",
+        "planId": "cmv9c5bjb008bu7s8f8wyzur2",
+        "proyectoId": "cmv9c5bey000iu7s80se4v0zh"
+      },
+      "last_payment_error": null
+    }
+  },
+  {
+    "titulo": "Plan congelado en la base",
+    "datos": {
+      "estado": "ACTIVO",
+      "montoCongelado": "176200",
+      "fechaCongelamiento": "2026-10-15T09:27:45.223Z",
+      "exhibiciones": [
+        {
+          "n": 0,
+          "tipo": "ANTICIPO",
+          "monto": "52860",
+          "fecha": "2026-10-15T09:27:41.734Z",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 1,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2026-11-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 2,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2026-12-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 3,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-01-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 4,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-02-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 5,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-03-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 6,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-04-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 7,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-05-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 8,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-06-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 9,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-07-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 10,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-08-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 11,
+          "tipo": "MENSUALIDAD",
+          "monto": "10278",
+          "fecha": "2027-09-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        },
+        {
+          "n": 12,
+          "tipo": "MENSUALIDAD",
+          "monto": "10282",
+          "fecha": "2027-10-15T09:27:41.734Z",
+          "estado": "PENDIENTE"
+        }
+      ],
+      "sumaR7Centavos": 17620000,
+      "pago": {
+        "monto": "52860",
+        "porcentajeComision": "0.15",
+        "montoComision": "7929"
+      }
+    }
+  },
+  {
+    "titulo": "Webhook payment_intent.succeeded (real, entregado dos veces)",
+    "datos": {
+      "evento": "evt_3UQkwuAPCX5nPyx20PQTKVRR",
+      "primeraEntrega": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "reenvio": {
+        "status": 200,
+        "cuerpo": {
+          "received": true,
+          "duplicate": true
+        }
+      },
+      "eventoStripe": {
+        "procesado": true,
+        "nota": "ya estaba aplicado (ya_aplicado)"
+      },
+      "pagosDeLaExhibicion": 1
+    }
+  },
+  {
+    "titulo": "Webhook con firma falsa",
+    "datos": {
+      "status": 400,
+      "cuerpo": {
+        "error": "Firma de Stripe inválida."
+      }
+    }
+  }
+]

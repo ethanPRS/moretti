@@ -1,0 +1,79 @@
+[
+  {
+    "titulo": "Barridos simultáneos",
+    "datos": {
+      "barridoA": {
+        "revisadas": 1,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 1,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      },
+      "barridoB": {
+        "revisadas": 1,
+        "cobradas": 1,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      }
+    }
+  },
+  {
+    "titulo": "PaymentIntent de la mensualidad 1 (off_session)",
+    "datos": {
+      "id": "pi_3UQkx1APCX5nPyx225yY1k5q",
+      "status": "succeeded",
+      "amount": 1027800,
+      "currency": "mxn",
+      "customer": "cus_VReF0YmKs3V4HZ",
+      "capture_method": "automatic",
+      "transfer_group": "proyecto_cmv9c5gau00aeu7s8yrcsonxl",
+      "application_fee_amount": null,
+      "description": "día uno · Mensualidad 1 · plan cmv9c5ge300i7u7s8lx4d20b2",
+      "metadata": {
+        "comisionCentavos": "154170",
+        "compradorId": "cmv9c5ge100i5u7s8isez5rpp",
+        "exhibicionId": "cmv9c5ge300ieu7s8pu6mmudp",
+        "intento": "1",
+        "numeroExhibicion": "1",
+        "planId": "cmv9c5ge300i7u7s8lx4d20b2",
+        "proyectoId": "cmv9c5gau00aeu7s8yrcsonxl"
+      },
+      "last_payment_error": null
+    }
+  },
+  {
+    "titulo": "Estado de las exhibiciones",
+    "datos": {
+      "m1": {
+        "estado": "PAGADA",
+        "pago": "pi_3UQkx1APCX5nPyx225yY1k5q"
+      },
+      "m2": {
+        "estado": "PENDIENTE"
+      }
+    }
+  },
+  {
+    "titulo": "Reenvío con la misma llave de idempotencia",
+    "datos": {
+      "llave": "plan_cmv9c5ge300i7u7s8lx4d20b2:exh_1:int_1",
+      "respuesta": {
+        "estado": "exitoso",
+        "referenciaPasarela": "pi_3UQkx1APCX5nPyx225yY1k5q"
+      },
+      "mismoPaymentIntent": "pi_3UQkx1APCX5nPyx225yY1k5q"
+    }
+  },
+  {
+    "titulo": "Objetos de Billing del cliente",
+    "datos": {
+      "suscripciones": 0,
+      "calendarios": 0
+    }
+  }
+]

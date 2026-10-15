@@ -1,0 +1,148 @@
+[
+  {
+    "titulo": "PaymentIntent de la liquidación",
+    "datos": {
+      "id": "pi_3UQkxxAPCX5nPyx20rWs7qlF",
+      "status": "succeeded",
+      "amount": 11306200,
+      "currency": "mxn",
+      "customer": "cus_VReGRjN814mYTz",
+      "capture_method": "automatic",
+      "transfer_group": "proyecto_cmv9c6obb02vlu7s8w1ebdy0b",
+      "application_fee_amount": null,
+      "description": "día uno · Mensualidad 2 · plan cmv9c6oei033eu7s8hi4q5sha",
+      "metadata": {
+        "comisionCentavos": "1695930",
+        "compradorId": "cmv9c6oeh033cu7s8v88jdv9t",
+        "exhibicionId": "cmv9c6r2v034iu7s8rqwm9izd",
+        "intento": "1",
+        "numeroExhibicion": "2",
+        "planId": "cmv9c6oei033eu7s8hi4q5sha",
+        "proyectoId": "cmv9c6obb02vlu7s8w1ebdy0b"
+      },
+      "last_payment_error": null
+    }
+  },
+  {
+    "titulo": "Plan cerrado",
+    "datos": {
+      "saldoAntes": "113062",
+      "estado": "LIQUIDADO",
+      "saldo": "0",
+      "pago": {
+        "monto": "113062",
+        "porcentajeComision": "0.15",
+        "montoComision": "16959.3"
+      },
+      "exhibiciones": [
+        {
+          "n": 0,
+          "tipo": "ANTICIPO",
+          "v": 1,
+          "monto": "52860",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 1,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 2,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 2,
+          "tipo": "LIQUIDACION",
+          "v": 2,
+          "monto": "113062",
+          "estado": "PAGADA"
+        },
+        {
+          "n": 3,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 4,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 5,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 6,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 7,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 8,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 9,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 10,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 11,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10278",
+          "estado": "CANCELADA"
+        },
+        {
+          "n": 12,
+          "tipo": "MENSUALIDAD",
+          "v": 1,
+          "monto": "10282",
+          "estado": "CANCELADA"
+        }
+      ],
+      "barridoUnAnoDespues": {
+        "revisadas": 0,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      }
+    }
+  }
+]

@@ -1,0 +1,206 @@
+[
+  {
+    "titulo": "Tarjetas rechazadas al guardarlas",
+    "datos": {
+      "pm_card_chargeDeclinedInsufficientFunds": "Your card has insufficient funds. Use a different payment method to complete this purchase.",
+      "pm_card_chargeDeclinedStolenCard": "Your card was declined.",
+      "pm_card_chargeDeclinedExpiredCard": "Your card has expired."
+    }
+  },
+  {
+    "titulo": "insufficient_funds: tres intentos",
+    "datos": {
+      "intentos": [
+        {
+          "intento": 1,
+          "barrido": {
+            "rechazadas": 1,
+            "cobradas": 0
+          },
+          "estado": "VENCIDA",
+          "ultimoCodigoRechazo": "insufficient_funds",
+          "intentosRechazados": 1,
+          "proximoIntentoEn": "2026-10-18T09:28:05.263Z",
+          "requiereTarjetaNueva": false,
+          "llave": "plan_cmv9c5q2p010gu7s8t3jx5i1i:exh_1:int_1"
+        },
+        {
+          "intento": 2,
+          "barrido": {
+            "rechazadas": 1,
+            "cobradas": 0
+          },
+          "estado": "VENCIDA",
+          "ultimoCodigoRechazo": "insufficient_funds",
+          "intentosRechazados": 2,
+          "proximoIntentoEn": "2026-10-22T09:28:06.076Z",
+          "requiereTarjetaNueva": false,
+          "llave": "plan_cmv9c5q2p010gu7s8t3jx5i1i:exh_1:int_2"
+        },
+        {
+          "intento": 3,
+          "barrido": {
+            "rechazadas": 1,
+            "cobradas": 0
+          },
+          "estado": "VENCIDA",
+          "ultimoCodigoRechazo": "insufficient_funds",
+          "intentosRechazados": 3,
+          "proximoIntentoEn": null,
+          "requiereTarjetaNueva": true,
+          "llave": "plan_cmv9c5q2p010gu7s8t3jx5i1i:exh_1:int_3"
+        }
+      ],
+      "bitacora": [
+        "El banco rechazó la mensualidad 1 por $10,278 (intento 1): insufficient_funds, fondos insuficientes. Consejo del banco: try_again_later. Se reintenta sola a partir del 18 de octubre de 2026 (reintento 1 de 2 por este motivo), con llave nueva. La mensualidad 1 quedó vencida.",
+        "El banco rechazó la mensualidad 1 por $10,278 (intento 2): insufficient_funds, fondos insuficientes. Consejo del banco: try_again_later. Se reintenta sola a partir del 22 de octubre de 2026 (reintento 2 de 2 por este motivo), con llave nueva.",
+        "El banco rechazó la mensualidad 1 por $10,278 (intento 3): insufficient_funds, fondos insuficientes. Consejo del banco: try_again_later. No se reintenta sola: se agotaron los reintentos por fondos insuficientes (2 con esta tarjeta). Hay que pedirle al comprador que registre otra tarjeta."
+      ],
+      "paymentIntentsEnStripe": []
+    }
+  },
+  {
+    "titulo": "generic_decline y cobro con tarjeta nueva",
+    "datos": {
+      "rechazo": {
+        "barrido": {
+          "revisadas": 1,
+          "cobradas": 0,
+          "pendientes": 0,
+          "rechazadas": 1,
+          "omitidas": 0,
+          "errores": [],
+          "pendientesSinConfirmar": []
+        },
+        "ultimoCodigoRechazo": "generic_decline",
+        "proximoIntentoEn": "2026-10-17T09:28:12.860Z"
+      },
+      "cobro": {
+        "barrido": {
+          "revisadas": 1,
+          "cobradas": 1,
+          "pendientes": 0,
+          "rechazadas": 0,
+          "omitidas": 0,
+          "errores": [],
+          "pendientesSinConfirmar": []
+        },
+        "paymentIntent": {
+          "id": "pi_3UQkxOAPCX5nPyx20vORFBr2",
+          "status": "succeeded",
+          "amount": 1027800,
+          "currency": "mxn",
+          "customer": "cus_VReFkVVjqlQVMX",
+          "capture_method": "automatic",
+          "transfer_group": "proyecto_cmv9c5ve1011vu7s8fgjbpo4a",
+          "application_fee_amount": null,
+          "description": "día uno · Mensualidad 1 · plan cmv9c5vh2019ou7s87rh2eb8w",
+          "metadata": {
+            "comisionCentavos": "154170",
+            "compradorId": "cmv9c5vh0019mu7s8guud4fuq",
+            "exhibicionId": "cmv9c5vh2019vu7s8vfsctgo6",
+            "intento": "2",
+            "numeroExhibicion": "1",
+            "planId": "cmv9c5vh2019ou7s87rh2eb8w",
+            "proyectoId": "cmv9c5ve1011vu7s8fgjbpo4a"
+          },
+          "last_payment_error": null
+        }
+      }
+    }
+  },
+  {
+    "titulo": "stolen_card",
+    "datos": {
+      "barrido": {
+        "revisadas": 2,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 1,
+        "omitidas": 1,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      },
+      "tarjetaInvalida": true,
+      "m1": {
+        "estado": "VENCIDA",
+        "codigo": "stolen_card"
+      },
+      "barridoSiguiente": {
+        "revisadas": 0,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      }
+    }
+  },
+  {
+    "titulo": "expired_card y authentication_required",
+    "datos": {
+      "expired_card": {
+        "barrido": {
+          "revisadas": 1,
+          "cobradas": 0,
+          "pendientes": 0,
+          "rechazadas": 1,
+          "omitidas": 0,
+          "errores": [],
+          "pendientesSinConfirmar": []
+        },
+        "estado": "VENCIDA",
+        "requiereTarjetaNueva": true
+      },
+      "authentication_required": {
+        "barrido": {
+          "revisadas": 1,
+          "cobradas": 0,
+          "pendientes": 0,
+          "rechazadas": 1,
+          "omitidas": 0,
+          "errores": [],
+          "pendientesSinConfirmar": []
+        },
+        "estado": "VENCIDA",
+        "requiereTarjetaNueva": true
+      }
+    }
+  },
+  {
+    "titulo": "Suspensión por dos vencidas y reactivación",
+    "datos": {
+      "rechazo": {
+        "revisadas": 2,
+        "cobradas": 0,
+        "pendientes": 0,
+        "rechazadas": 2,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      },
+      "estadoTrasRechazos": "SUSPENDIDO",
+      "cobro": {
+        "revisadas": 2,
+        "cobradas": 2,
+        "pendientes": 0,
+        "rechazadas": 0,
+        "omitidas": 0,
+        "errores": [],
+        "pendientesSinConfirmar": []
+      },
+      "estadoTrasCobrar": "ACTIVO",
+      "bitacora": [
+        {
+          "tipo": "plan_suspendido",
+          "comentario": "Plan suspendido porque la mensualidad 2 se venció sin cobrarse: 2 exhibiciones vencidas (suspende a partir de 2)."
+        },
+        {
+          "tipo": "plan_reactivado",
+          "comentario": "Plan reactivado porque se cobró la mensualidad 1: ya no tiene vencidas que lo suspendan ni disputas abiertas."
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,49 @@
+[
+  {
+    "titulo": "Sondeo de MSI",
+    "datos": {
+      "implementadoEnElSistema": false,
+      "installmentsQueMandaElSistema": null,
+      "stripe": {
+        "paymentIntent": "pi_3UQky2APCX5nPyx22JqU2KMX",
+        "installments": {
+          "available_plans": [
+            {
+              "count": 3,
+              "interval": "month",
+              "type": "fixed_count"
+            },
+            {
+              "count": 6,
+              "interval": "month",
+              "type": "fixed_count"
+            },
+            {
+              "count": 9,
+              "interval": "month",
+              "type": "fixed_count"
+            },
+            {
+              "count": 12,
+              "interval": "month",
+              "type": "fixed_count"
+            },
+            {
+              "count": 18,
+              "interval": "month",
+              "type": "fixed_count"
+            },
+            {
+              "count": 24,
+              "interval": "month",
+              "type": "fixed_count"
+            }
+          ],
+          "enabled": true,
+          "plan": null
+        }
+      },
+      "nota": "No hay código de MSI (lib/pasarela/stripe.ts no manda installments). Con installments.enabled, Stripe ofrece para la tarjeta de prueba mexicana: 3 meses, 6 meses, 9 meses, 12 meses, 18 meses, 24 meses."
+    }
+  }
+]

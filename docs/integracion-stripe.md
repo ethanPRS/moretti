@@ -118,6 +118,25 @@ ratificar con Operación. Si el banco manda `advice_code = do_not_try_again` o
 comprador registra otra tarjeta, sus mensualidades rechazadas vuelven al
 barrido, la cuenta de reintentos empieza de cero y se quita la marca de inválida.
 
+## Tarjeta por vencer
+
+`lib/motor/vencimiento-tarjeta.ts` (etapas y fechas) y
+`lib/motor/avisos-tarjeta.ts` (bitácora). Una tarjeta vale hasta el último
+día de su mes de vencimiento. **Por ahora sólo se avisa al back office.**
+
+- **Etapas:** 1 mes (30 días), 2 semanas, 1 semana y 3 días antes; y una más
+  si llega a vencer.
+- **Bitácora:** después de cobrar, el barrido (`/api/cobranza/barrido` y
+  `npm run cobranza:barrido`) deja un evento `tarjeta_por_vencer` en el plan
+  al entrar a cada etapa, una vez por etapa y por tarjeta
+  (`Evento.estadoNuevo` = `30d 10/2026`). Una tarjeta renovada
+  (`payment_method.automatically_updated` o una tarjeta nueva) empieza de
+  cero. Si el barrido no corrió unos días, avisa la etapa en la que va.
+- **Tablero de cobranza:** alerta «Tarjeta por vencer» desde un mes antes,
+  con la fecha, los días que faltan y cuántos cobros dependen de ella.
+- No avisa si al plan ya no le quedan cobros después del vencimiento, si la
+  tarjeta ya está marcada inválida o si el plan no está activo.
+
 ## Suspensión del plan
 
 `lib/motor/suspension.ts`. El **plan** pasa a `SUSPENDIDO` si tiene **dos
@@ -262,4 +281,5 @@ stripe trigger setup_intent.succeeded
   Moretti tiene acceso, hace falta un rol que no vea la comisión del canal
   (ni en pantallas ni en JSON). Hoy ninguna API pública la devuelve.
 - **Pantallas** para reembolsar, capturar y liberar: existen las rutas, no los botones.
-- **Avisarle al comprador** (correo) que su tarjeta fue rechazada.
+- **Avisarle al comprador** (correo) que su tarjeta fue rechazada o que
+  está por vencer, con la liga para registrar otra.

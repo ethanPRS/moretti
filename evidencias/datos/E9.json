@@ -1,0 +1,85 @@
+[
+  {
+    "titulo": "Sin decir si se devuelve la comisión",
+    "datos": {
+      "resultado": "ReglaError: hay que decir si se devuelve la comisión"
+    }
+  },
+  {
+    "titulo": "Reembolsos en Stripe",
+    "datos": [
+      {
+        "id": "re_3UQky7APCX5nPyx21CAr9Mch",
+        "amount": 256950,
+        "status": "succeeded",
+        "metadata": {
+          "devolverComision": "false",
+          "numero": "1",
+          "pagoId": "cmv9c704l03n4u7s8ukxq2thd"
+        }
+      },
+      {
+        "id": "re_3UQky7APCX5nPyx21a9qa2ch",
+        "amount": 770850,
+        "status": "succeeded",
+        "metadata": {
+          "devolverComision": "true",
+          "numero": "2",
+          "pagoId": "cmv9c704l03n4u7s8ukxq2thd"
+        }
+      }
+    ]
+  },
+  {
+    "titulo": "Registros en la base",
+    "datos": {
+      "pagoOriginal": {
+        "monto": "10278",
+        "sinCambios": true
+      },
+      "reembolsos": [
+        {
+          "monto": "2569.5",
+          "origen": "BACK_OFFICE",
+          "devolvioComision": false,
+          "referencia": "re_3UQky7APCX5nPyx21CAr9Mch",
+          "motivo": "Ajuste de partida"
+        },
+        {
+          "monto": "7708.5",
+          "origen": "BACK_OFFICE",
+          "devolvioComision": true,
+          "referencia": "re_3UQky7APCX5nPyx21a9qa2ch",
+          "motivo": "Cancelación del plan"
+        }
+      ],
+      "webhookChargeRefunded": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      }
+    }
+  },
+  {
+    "titulo": "Reembolso desde el Dashboard (fuera del sistema)",
+    "datos": {
+      "refund": {
+        "id": "re_3UQky6APCX5nPyx20DWcKU4E",
+        "amount": 50000
+      },
+      "evento": "evt_3UQky6APCX5nPyx20ZlkU68N",
+      "entrega": {
+        "status": 200,
+        "cuerpo": {
+          "received": true
+        }
+      },
+      "registro": {
+        "origen": "DASHBOARD_MORETTI",
+        "monto": "500",
+        "usuario": "Dashboard de Stripe (fuera del sistema)"
+      }
+    }
+  }
+]

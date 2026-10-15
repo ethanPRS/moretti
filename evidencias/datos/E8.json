@@ -1,0 +1,20 @@
+[
+  {
+    "titulo": "Sondeo de SPEI y OXXO",
+    "datos": {
+      "implementadoEnElSistema": false,
+      "spei": {
+        "id": "pi_3UQky2APCX5nPyx213VrKAKF",
+        "status": "requires_action",
+        "next_action": "display_bank_transfer_instructions",
+        "clabe": "124180655049837964"
+      },
+      "oxxo": {
+        "id": "pi_3UQky3APCX5nPyx20Bv3BoGQ",
+        "status": "requires_action",
+        "next_action": "oxxo_display_details"
+      },
+      "nota": "El sistema sólo usa payment_method_types: ['card'] (docs/integracion-stripe.md, «Fuera de alcance»). No hay registro manual de pagos fuera de Stripe."
+    }
+  }
+]

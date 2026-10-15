@@ -1,0 +1,49 @@
+[
+  {
+    "titulo": "Comisión por proyecto",
+    "datos": [
+      {
+        "proyecto": "cmv9c7mgt046wu7s8izb04p06",
+        "porcentaje": "0.15",
+        "monto": "52860",
+        "comision": "7929",
+        "pi": "pi_3UQkydAPCX5nPyx23YEpBNaP",
+        "metadata": "792900"
+      },
+      {
+        "proyecto": "cmv9c7mhx04aeu7s8c1wa3dec",
+        "porcentaje": "0.1",
+        "monto": "62160",
+        "comision": "6216",
+        "pi": "pi_3UQkygAPCX5nPyx21GPmqXlF",
+        "metadata": "621600"
+      }
+    ]
+  },
+  {
+    "titulo": "Cambio de % a mitad del plan",
+    "datos": {
+      "anticipo": {
+        "porcentaje": "0.15",
+        "comision": "7929"
+      },
+      "mensualidad1": {
+        "porcentaje": "0.12",
+        "comision": "1233.36"
+      }
+    }
+  },
+  {
+    "titulo": "Transferencia a Moretti (neto)",
+    "datos": {
+      "transferencia": {
+        "id": "tr_3UQkygAPCX5nPyx21VLyJPz4",
+        "amount": 5594400,
+        "destination": "acct_1UOM68APCXXhJPjl",
+        "transfer_group": "proyecto_cmv9c7mhx04aeu7s8c1wa3dec"
+      },
+      "bruto": 62160,
+      "neto": 55944
+    }
+  }
+]
