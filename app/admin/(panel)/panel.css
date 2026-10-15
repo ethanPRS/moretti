@@ -268,7 +268,7 @@
   background: #c2412d;
 }
 .aviso[data-tipo="error"] {
-  border-color: #eec9c0;
+  border-color: color-mix(in srgb, #c2412d 35%, var(--line));
 }
 .aviso-icono svg {
   width: 20px;
@@ -477,7 +477,7 @@
 .graf {
   --g-cobrado: #2a78d6;
   --g-vencido: #d0632a;
-  --g-resto: #d9d4cb;
+  --g-resto: var(--line-2);
   margin: 0;
 }
 .graf-lienzo { position: relative; }
@@ -499,7 +499,7 @@
 .graf-s-vencido { background: var(--g-vencido); }
 /* Lo que falta: gris con rayas, para que no dependa sólo del color. */
 .graf-s-resto {
-  background: repeating-linear-gradient(135deg, var(--g-resto) 0 6px, #e8e4dc 6px 9px);
+  background: repeating-linear-gradient(135deg, var(--g-resto) 0 6px, var(--line) 6px 9px);
 }
 .graf-leyenda { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 13px; }
 .graf-leyenda li { display: flex; align-items: center; gap: 6px; }

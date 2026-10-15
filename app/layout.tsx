@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Fraunces, Karla, IBM_Plex_Mono } from "next/font/google";
+import { Poppins, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// La tipografía de la maqueta de Ana Cris (5b): Fraunces en títulos y cifras,
-// Karla en el texto. Se regresó a ella el 11 oct (había cambiado a Poppins).
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
-
-const karla = Karla({
-  variable: "--font-karla",
+// Poppins en títulos y texto. El 11 oct (D-45) se había regresado a
+// Fraunces + Karla de la maqueta 5b; el 14 oct Ethan la vuelve a pedir.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -32,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${fraunces.variable} ${karla.variable} ${plexMono.variable} h-full`}
+      className={`${poppins.variable} ${plexMono.variable} h-full`}
       // Extensiones como Grammarly agregan atributos a <html> y <body> antes
       // de que React hidrate. Esto sólo ignora atributos de estas dos
       // etiquetas; un desajuste dentro de la página sí se sigue reportando.

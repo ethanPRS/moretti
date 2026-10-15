@@ -110,29 +110,44 @@ export default async function SitioPage() {
         </div>
       </section>
 
-      <section id="como">
+      <section id="como" className="como">
         <div className="wrap">
           <Reveal className="sec-head narrow">
             <p className="eyebrow">Cómo funciona</p>
             <h2>Pagas mientras se construye. Recibes todo instalado.</h2>
+            <p>Desde que apartas hasta que te entregan llaves pasan unos dieciocho meses. Para entonces ya terminaste de pagar.</p>
           </Reveal>
-          <div className="pasos">
-            <Reveal className="paso">
-              <div className="dot">1</div>
+
+          <Reveal className="como-barra" delay={60}>
+            <div className="cb-hoy"><b>Hoy</b><span>Anticipo</span></div>
+            <div className="cb-pagos"><b>Meses 1 a 12</b><span>Mensualidades fijas</span></div>
+            <div className="cb-obra"><b>Obra</b><span>Ya pagado</span></div>
+            <div className="cb-llaves"><b>Llaves</b><span>Instalado</span></div>
+          </Reveal>
+
+          <ol className="como-pasos">
+            <Reveal as="li" className="cp">
+              <p className="cp-n" aria-hidden="true">1</p>
+              <p className="cp-cuando">Hoy</p>
               <h3>Eliges, firmas y apartas</h3>
-              <p>Escoges tu paquete, <b>lees y aceptas las condiciones</b>, firmas tu contrato con Moretti y das tu anticipo. Tu precio queda congelado hasta la entrega, aunque falten dieciocho meses.</p>
+              <p>Escoges tu paquete, aceptas las condiciones, firmas con Moretti y das tu anticipo.</p>
+              <p className="cp-clave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Tu precio queda congelado</p>
             </Reveal>
-            <Reveal className="paso" delay={110}>
-              <div className="dot">2</div>
+            <Reveal as="li" className="cp" delay={110}>
+              <p className="cp-n" aria-hidden="true">2</p>
+              <p className="cp-cuando">Meses 1 a 12</p>
               <h3>Pagas cada mes</h3>
-              <p>Doce mensualidades fijas, sin intereses y sin trámite de crédito. Se cargan solas a tu tarjeta y te avisamos antes de cada una.</p>
+              <p>Mensualidades fijas que se cargan solas a tu tarjeta. Te avisamos antes de cada una.</p>
+              <p className="cp-clave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Sin intereses ni crédito</p>
             </Reveal>
-            <Reveal className="paso" delay={220}>
-              <div className="dot">3</div>
+            <Reveal as="li" className="cp" delay={220}>
+              <p className="cp-n" aria-hidden="true">3</p>
+              <p className="cp-cuando">Al recibir llaves</p>
               <h3>Recibes tu depa listo</h3>
-              <p>Medimos en obra antes de fabricar, e instalamos en cuanto el desarrollador te entrega tu unidad. Firmas el acta de recepción y ahí arranca tu garantía. Estrenas departamento, no obra blanca.</p>
+              <p>Medimos en obra, fabricamos a tu medida e instalamos en cuanto te entregan tu unidad.</p>
+              <p className="cp-clave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Garantía desde el acta</p>
             </Reveal>
-          </div>
+          </ol>
         </div>
       </section>
 
@@ -141,7 +156,7 @@ export default async function SitioPage() {
           <Reveal className="sec-head">
             <p className="eyebrow">Aparta tu paquete</p>
             <h2>Antes de decir que sí, lee esto.</h2>
-            <p>Son ocho puntos. Es lo mismo que dice tu contrato, en corto. Cuando los marques todos, seguimos con tus datos y la firma.</p>
+            <p>Ocho puntos: lo mismo que dice tu contrato, en corto. Márcalos y seguimos con tus datos y la firma.</p>
           </Reveal>
           <Reveal delay={80}>
             <Condiciones />
@@ -155,15 +170,39 @@ export default async function SitioPage() {
             <p className="eyebrow">Los cuatro momentos que definen todo</p>
             <h2>Cuándo se firma, cuándo se congela el precio y cuándo ya no hay cambios.</h2>
           </Reveal>
-          <Reveal className="momentos">
-            <div><p className="mm">Día 0</p><b>Firma el contrato</b><p>Con Moretti, antes de pagar. Sin contrato firmado el sistema no cobra: un cobro sin contrato es dinero que hay que devolver.</p></div>
-            <div className="on"><p className="mm">Día 0</p><b>Paga el anticipo</b><p>Es el acto que activa todo. Aquí se congela el precio y se aparta el lugar en producción. Antes de esto no hay nada apartado.</p></div>
-            <div><p className="mm">Día 5 hábil</p><b>Cierra el arrepentimiento</b><p>Hasta ese día puede echarse para atrás y se le devuelve todo, sin penalización. Después, aplica lo que diga el contrato.</p></div>
-            <div className="on"><p className="mm">Mes ~15</p><b>Levantamiento en obra</b><p>Se mide su cocina real. <b>Después de esta fecha ya no hay cambio de paquete ni de acabados</b>, porque el material ya se comprometió.</p></div>
-          </Reveal>
-          <Reveal className="fiscal">
-            <b>Y la factura, aunque no haya terminado de pagar.</b>
-            <p>Como el producto y el precio ya están definidos al firmar, los pagos no son anticipos: son parcialidades. Moretti emite una factura por el total al momento de la operación, con método de pago en parcialidades, y después un complemento de pago por cada mensualidad cobrada. El comprador tiene su comprobante desde el día uno, aunque le falten once mensualidades. Y cada complemento tiene fecha límite de ley: el quinto día natural del mes siguiente al del pago. Emitirlos le toca a Moretti; <b>vigilar que no se pase ninguno le toca al sistema</b>, que marca cada cobro como pendiente hasta que tiene su folio registrado.</p>
+          <ol className="momentos">
+            <Reveal as="li" className="mom">
+              <p className="mm"><span>día</span> 0</p>
+              <b>Firma el contrato</b>
+              <p>Con Moretti, antes de pagar. Sin contrato firmado el sistema no cobra.</p>
+            </Reveal>
+            <Reveal as="li" className="mom on" delay={90}>
+              <p className="mm"><span>día</span> 0</p>
+              <b>Paga el anticipo</b>
+              <p>Activa todo: <strong>se congela el precio</strong> y se aparta tu lugar en producción.</p>
+            </Reveal>
+            <Reveal as="li" className="mom" delay={180}>
+              <p className="mm"><span>día hábil</span> 5</p>
+              <b>Cierra el arrepentimiento</b>
+              <p>Hasta ese día puedes echarte para atrás y se te devuelve todo, sin penalización.</p>
+            </Reveal>
+            <Reveal as="li" className="mom on" delay={270}>
+              <p className="mm"><span>mes</span> ~15</p>
+              <b>Levantamiento en obra</b>
+              <p>Se mide tu cocina real. <strong>Después ya no hay cambios</strong> de paquete ni de acabados.</p>
+            </Reveal>
+          </ol>
+          <Reveal className="factura">
+            <div>
+              <p className="eyebrow">Y la factura</p>
+              <h3>Tu comprobante desde el día uno, aunque no hayas terminado de pagar.</h3>
+              <p>Como el producto y el precio quedan definidos al firmar, tus pagos son parcialidades. Emitir las facturas le toca a Moretti; <b>vigilar que no se pase ninguna le toca al sistema</b>.</p>
+            </div>
+            <ul>
+              <li><b>Al firmar</b><span>Factura por el total, en parcialidades</span></li>
+              <li><b>Con cada pago</b><span>Un complemento de pago</span></li>
+              <li><b>Fecha límite</b><span>Día 5 del mes siguiente al pago</span></li>
+            </ul>
           </Reveal>
         </div>
       </section>
@@ -173,32 +212,47 @@ export default async function SitioPage() {
           <Reveal className="sec-head narrow">
             <p className="eyebrow">Supervisión y medidas</p>
             <h2>Nadie mide su propio trabajo.</h2>
-            <p>Entre que el comprador aparta y que recibe su cocina pasan dieciocho meses y una obra entera. Por eso hay un tercero que mide en sitio, verifica la instalación y firma la entrega: ni el fabricante ni el desarrollador.</p>
+            <p>Entre que apartas y que recibes tu cocina pasan dieciocho meses y una obra entera. Por eso un tercero mide en sitio, verifica la instalación y firma la entrega.</p>
           </Reveal>
-          <div className="pasos">
-            <Reveal className="paso">
-              <div className="dot">1</div>
+          <div className="sup">
+            <Reveal className="sup-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 17 3l4 4L7 21z" /><path d="m7 13 2 2m1-5 2 2m1-5 2 2" /></svg>
+              <p className="sup-n">01 · Medición</p>
               <h3>Se mide en obra</h3>
-              <p>Cuando el desarrollador entrega la unidad, un verificador independiente toma las medidas reales de la cocina y los clósets. Los planos no traen cotas de fabricante y una cocina se hace al milímetro. <b>Esta fecha cierra los cambios:</b> después ya no hay cambio de paquete ni de acabados, porque el material se compromete.</p>
+              <p>Al entregarte la unidad, el verificador toma las medidas reales de cocina y clósets. Una cocina se hace al milímetro, no sobre planos.</p>
+              <p className="sup-nota">Esta fecha cierra los cambios.</p>
             </Reveal>
-            <Reveal className="paso" delay={110}>
-              <div className="dot">2</div>
+            <Reveal className="sup-card" delay={110}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M4 12h16M12 3v18M10 8h.01M14 16h.01" /></svg>
+              <p className="sup-n">02 · Instalación</p>
               <h3>Se fabrica e instala</h3>
-              <p>Moretti produce sobre la medida real, no sobre el render, e instala en el plazo pactado desde que el desarrollador entrega llaves. El mismo verificador revisa avance y calidad durante la instalación, y lo que encuentra queda en el expediente de la unidad.</p>
+              <p>Moretti produce sobre la medida real e instala en el plazo pactado. El verificador revisa avance y calidad, y todo queda en tu expediente.</p>
             </Reveal>
-            <Reveal className="paso" delay={220}>
-              <div className="dot">3</div>
+            <Reveal className="sup-card" delay={220}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 14l2 2 4-4" /></svg>
+              <p className="sup-n">03 · Entrega</p>
               <h3>Se recibe con acta</h3>
-              <p>Lista de verificación punto por punto, fotos de cada área y <b>acta firmada</b> por el comprador. Sin acta, la unidad no se da por entregada — y la garantía arranca en esa fecha, no antes.</p>
+              <p>Lista de verificación punto por punto, fotos de cada área y acta firmada por ti. Sin acta no hay entrega.</p>
+              <p className="sup-nota">Tu garantía arranca ese día.</p>
             </Reveal>
           </div>
-          <Reveal className="fiscal">
-            <b>Quién verifica</b>
-            <p>Un despacho de arquitectura independiente, ajeno al fabricante y al desarrollador (por confirmar). No fabrica ni instala: mide, verifica y levanta el acta. Es la figura que hace que el comprador tenga a quién llamar y que nadie termine calificando su propio trabajo.</p>
+          <Reveal className="quien">
+            <div className="quien-txt">
+              <p className="eyebrow">Quién verifica</p>
+              <h3>Un despacho de arquitectura independiente.</h3>
+              <p>No fabrica ni instala: mide, verifica y levanta el acta. Así siempre tienes a quién llamar. <span className="quien-pc">(Por confirmar.)</span></p>
+            </div>
+            <div className="quien-diag" aria-label="El verificador queda en medio, ajeno al fabricante y al desarrollador">
+              <span>Fabricante</span>
+              <i />
+              <span className="yo">Verificador</span>
+              <i />
+              <span>Desarrollador</span>
+            </div>
           </Reveal>
           <Reveal className="owns">
-            <div><b>Lo que resuelve para el fabricante</b><p>Fabrica sobre medidas tomadas en obra y no sobre planos: menos reprocesos, menos ajustes en sitio y una entrega documentada que cierra la discusión antes de que empiece.</p></div>
-            <div className="no"><b>Lo que resuelve para el desarrollador</b><p>La calidad del equipamiento dentro de su edificio queda verificada por un tercero, y las incidencias se resuelven en el expediente de la unidad, sin llegar a su mesa de posventa.</p></div>
+            <div><p className="eyebrow">Para el fabricante</p><p>Fabrica sobre medidas de obra: menos reprocesos, menos ajustes en sitio y una entrega documentada que cierra la discusión antes de que empiece.</p></div>
+            <div><p className="eyebrow">Para el desarrollador</p><p>La calidad del equipamiento queda verificada por un tercero, y las incidencias se resuelven en el expediente, sin llegar a su posventa.</p></div>
           </Reveal>
         </div>
       </section>

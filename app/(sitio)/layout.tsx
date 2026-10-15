@@ -12,12 +12,6 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
             <div className="brand">
               dia<em>´</em>uno
             </div>
-            <div className="lock">
-              <span className="con">con</span>
-              <span className="sep" />
-              {/* eslint-disable-next-line @next/next/no-img-element -- logo pequeño, igual que en la maqueta */}
-              <img src="/moretti-style.png" alt="Moretti Style" />
-            </div>
           </Link>
           <div className="nav-links">
             <Link href="/#calc" className="hidden sm:inline">Cotiza tu depa</Link>

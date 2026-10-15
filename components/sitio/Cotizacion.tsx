@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { calcularExhibicionesEnteras } from "@/lib/motor/enteros";
 import {
   canastaInicialArmaElTuyo,
@@ -202,55 +202,141 @@ export function Calculadora({
   );
 }
 
-const CONDICIONES: { titulo: string; texto: React.ReactNode }[] = [
-  { titulo: "1 · Con quién contratas", texto: <>Tu contrato es con <b>Moretti</b>: fabrica, instala, garantiza y factura. día uno organiza el programa, te acompaña y administra tu plan de pagos; no fabrica ni instala. El desarrollador entrega tu departamento en obra blanca y no interviene en el equipamiento. Siempre sabes a quién llamar.</> },
-  { titulo: "2 · Cómo pagas", texto: <>Hoy das el <b>30% de anticipo</b>. El resto son <b>doce mensualidades fijas, sin intereses</b>, que se cargan solas a la tarjeta que registres — te avisamos antes de cada cargo, y con esta aceptación los autorizas expresamente. Puedes adelantar pagos, y si liquidas antes de la sexta mensualidad pagas el precio de contado (8% menos). El plan a doce meses aplica desde $50,000; abajo de eso, un solo pago.</> },
-  { titulo: "3 · Tu precio no se mueve", texto: <>Queda <b>congelado desde que pagas el anticipo hasta la entrega</b>, aunque pasen dieciocho meses y cambien los materiales o el tipo de cambio. Es el precio que ves en el cotizador, con instalación incluida, más IVA.</> },
-  { titulo: "4 · Puedes arrepentirte", texto: <>Tienes <b>cinco días hábiles desde la firma</b> para cancelar y se te devuelve todo, sin penalización. Después, aplica lo que dice tu contrato: antes del levantamiento en obra, cancelas con un cargo administrativo; con una partida ya en producción, esa partida no se devuelve porque el material ya se compró para ti.</> },
-  { titulo: "5 · Si un pago no pasa", texto: <>Se reintenta solo y te avisamos. Con <b>dos mensualidades vencidas el plan se suspende y tu producción se detiene</b> hasta que se regularice; tienes derecho a una reprogramación. Moretti nunca fabrica lo que no está pagado, y por eso tampoco te cobra por producción detenida.</> },
-  { titulo: "6 · Hasta cuándo puedes cambiar", texto: <>Paquete, partidas, acabados y fotos de referencia se pueden cambiar <b>hasta el levantamiento en obra</b>, que es cuando se toman tus medidas reales. Después de esa fecha ya no hay cambios: el material se compra con esas medidas y esos acabados.</> },
-  { titulo: "7 · Cómo te entregan", texto: <>Cuando el desarrollador entrega tu unidad, <b>un verificador independiente</b> —ni el fabricante ni el desarrollador— mide tu cocina y tus clósets en sitio. Moretti fabrica sobre esa medida e instala en el plazo pactado en tu contrato, contado desde que recibes llaves. Recibes con lista de verificación punto por punto, fotos de cada área y <b>acta firmada por ti</b>. Sin acta no hay entrega, y la garantía de Moretti arranca ese día.</> },
-  { titulo: "8 · Tus facturas y tus datos", texto: <>Al firmar recibes tu <b>factura por el total</b> (en parcialidades) y después un <b>complemento de pago por cada mensualidad</b>; todo se descarga de tu expediente sin pedirlo. Tus datos personales y de pago se usan sólo para tu pedido y se comparten con Moretti para fabricar, instalar y facturar, conforme al aviso de privacidad que firmas.</> },
+const CONDICIONES: { titulo: string; corto: string; texto: React.ReactNode }[] = [
+  { titulo: "Con quién contratas", corto: "Con Moretti: fabrica, instala, garantiza y factura.", texto: <>Tu contrato es con <b>Moretti</b>: fabrica, instala, garantiza y factura. día uno organiza el programa, te acompaña y administra tu plan de pagos; no fabrica ni instala. El desarrollador entrega tu departamento en obra blanca y no interviene en el equipamiento. Siempre sabes a quién llamar.</> },
+  { titulo: "Cómo pagas", corto: "30% hoy y doce mensualidades fijas, sin intereses, con cargo automático.", texto: <>Hoy das el <b>30% de anticipo</b>. El resto son <b>doce mensualidades fijas, sin intereses</b>, que se cargan solas a la tarjeta que registres — te avisamos antes de cada cargo, y con esta aceptación los autorizas expresamente. Puedes adelantar pagos, y si liquidas antes de la sexta mensualidad pagas el precio de contado (8% menos). El plan a doce meses aplica desde $50,000; abajo de eso, un solo pago.</> },
+  { titulo: "Tu precio no se mueve", corto: "Queda congelado desde el anticipo hasta la entrega.", texto: <>Queda <b>congelado desde que pagas el anticipo hasta la entrega</b>, aunque pasen dieciocho meses y cambien los materiales o el tipo de cambio. Es el precio que ves en el cotizador, con instalación incluida, más IVA.</> },
+  { titulo: "Puedes arrepentirte", corto: "Cinco días hábiles para cancelar y se te devuelve todo.", texto: <>Tienes <b>cinco días hábiles desde la firma</b> para cancelar y se te devuelve todo, sin penalización. Después, aplica lo que dice tu contrato: antes del levantamiento en obra, cancelas con un cargo administrativo; con una partida ya en producción, esa partida no se devuelve porque el material ya se compró para ti.</> },
+  { titulo: "Si un pago no pasa", corto: "Se reintenta solo; con dos vencidas tu plan se pausa.", texto: <>Se reintenta solo y te avisamos. Con <b>dos mensualidades vencidas el plan se suspende y tu producción se detiene</b> hasta que se regularice; tienes derecho a una reprogramación. Moretti nunca fabrica lo que no está pagado, y por eso tampoco te cobra por producción detenida.</> },
+  { titulo: "Hasta cuándo puedes cambiar", corto: "Hasta el levantamiento en obra; después ya no hay cambios.", texto: <>Paquete, partidas, acabados y fotos de referencia se pueden cambiar <b>hasta el levantamiento en obra</b>, que es cuando se toman tus medidas reales. Después de esa fecha ya no hay cambios: el material se compra con esas medidas y esos acabados.</> },
+  { titulo: "Cómo te entregan", corto: "Un verificador independiente mide y recibes con acta firmada.", texto: <>Cuando el desarrollador entrega tu unidad, <b>un verificador independiente</b> —ni el fabricante ni el desarrollador— mide tu cocina y tus clósets en sitio. Moretti fabrica sobre esa medida e instala en el plazo pactado en tu contrato, contado desde que recibes llaves. Recibes con lista de verificación punto por punto, fotos de cada área y <b>acta firmada por ti</b>. Sin acta no hay entrega, y la garantía de Moretti arranca ese día.</> },
+  { titulo: "Tus facturas y tus datos", corto: "Factura por el total y un complemento por cada pago.", texto: <>Al firmar recibes tu <b>factura por el total</b> (en parcialidades) y después un <b>complemento de pago por cada mensualidad</b>; todo se descarga de tu expediente sin pedirlo. Tus datos personales y de pago se usan sólo para tu pedido y se comparten con Moretti para fabricar, instalar y facturar, conforme al aviso de privacidad que firmas.</> },
 ];
 
-/** «Antes de decir que sí, lee esto.» Las ocho condiciones de la maqueta; al marcarlas, sigue a /apartar. */
+/**
+ * «Antes de decir que sí, lee esto.» Las ocho condiciones de la maqueta, una
+ * por tarjeta, como slider: se desliza con el dedo (scroll-snap), con las
+ * flechas o con «Siguiente». Se aceptan una sola vez, al final de leerlas
+ * todas; entonces sigue a /apartar.
+ */
 export function Condiciones() {
   const { eleccion } = useEleccion();
-  const [marcadas, setMarcadas] = useState<boolean[]>(() => CONDICIONES.map(() => false));
-  const n = marcadas.filter(Boolean).length;
-  const listas = n === CONDICIONES.length;
+  const [actual, setActual] = useState(0);
+  const [leidas, setLeidas] = useState(1);
+  const [aceptado, setAceptado] = useState(false);
+  const pista = useRef<HTMLDivElement>(null);
+  const total = CONDICIONES.length;
+  const todasLeidas = leidas === total;
+
+  function ir(i: number) {
+    const el = pista.current;
+    if (!el) return;
+    const destino = Math.max(0, Math.min(total - 1, i));
+    el.scrollTo({ left: destino * el.clientWidth, behavior: "smooth" });
+  }
 
   return (
-    <>
-      <ol className="pasos-ap">
-        <li className="on"><i>1</i> Lo que aceptas</li>
+    <div className="ap">
+      <ol className="pasos-ap" aria-label="Pasos para apartar">
+        <li className="on" aria-current="step"><i>1</i> Lo que aceptas</li>
         <li><i>2</i> Tus datos</li>
         <li><i>3</i> Firma y anticipo</li>
       </ol>
       {eleccion.resumen && (
         <div className="ap-res">
+          <span className="ap-res-k">Vas a apartar</span>
           <b>{eleccion.resumen}</b>
-          <span>Lo que elegiste en el cotizador. <a href="#calc" className="underline">Cambiarlo</a></span>
+          <a href="#calc">Cambiar</a>
         </div>
       )}
-      <div className="conds">
-        {CONDICIONES.map((cond, i) => (
-          <label key={cond.titulo} className="cond">
-            <input
-              type="checkbox"
-              checked={marcadas[i]}
-              onChange={(e) => setMarcadas((m) => m.map((x, j) => (j === i ? e.target.checked : x)))}
-            />
-            <span>
-              <b>{cond.titulo}</b>
-              <p>{cond.texto}</p>
-            </span>
-          </label>
-        ))}
+
+      <div className="sl" role="region" aria-roledescription="carrusel" aria-label="Condiciones">
+        <div
+          className="sl-pista"
+          ref={pista}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const i = Math.round(el.scrollLeft / el.clientWidth);
+            setActual(i);
+            setLeidas((n) => Math.max(n, i + 1));
+          }}
+        >
+          {CONDICIONES.map((cond, i) => {
+            const ultima = i === total - 1;
+            return (
+              <article
+                key={cond.titulo}
+                className="sl-card"
+                data-ok={(ultima && aceptado) || undefined}
+                aria-roledescription="condición"
+                aria-label={`${i + 1} de ${total}`}
+                aria-hidden={i !== actual}
+              >
+                <p className="sl-n">
+                  <span>{String(i + 1).padStart(2, "0")}</span> / {String(total).padStart(2, "0")}
+                </p>
+                <h3>{cond.titulo}</h3>
+                <p className="sl-corto">{cond.corto}</p>
+                <p className="sl-texto">{cond.texto}</p>
+                {ultima ? (
+                  <label className="sl-acepto">
+                    <input
+                      type="checkbox"
+                      checked={aceptado}
+                      disabled={!todasLeidas}
+                      tabIndex={i === actual ? 0 : -1}
+                      onChange={(e) => setAceptado(e.target.checked)}
+                    />
+                    <span>
+                      <b>Leí las ocho condiciones y las acepto.</b>
+                      <small>Son las mismas que dice tu contrato con Moretti.</small>
+                    </span>
+                  </label>
+                ) : (
+                  <button type="button" className="sl-sig" tabIndex={i === actual ? 0 : -1} onClick={() => ir(i + 1)}>
+                    Siguiente
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="sl-nav">
+          <button type="button" className="sl-flecha" onClick={() => ir(actual - 1)} disabled={actual === 0} aria-label="Condición anterior">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
+          <div className="sl-puntos">
+            {CONDICIONES.map((cond, i) => (
+              <button
+                key={cond.titulo}
+                type="button"
+                className="sl-punto"
+                aria-label={`Ir a la condición ${i + 1}: ${cond.titulo}`}
+                aria-current={i === actual || undefined}
+                data-ok={i < leidas || undefined}
+                onClick={() => ir(i)}
+              />
+            ))}
+          </div>
+          <button type="button" className="sl-flecha" onClick={() => ir(actual + 1)} disabled={actual === total - 1} aria-label="Condición siguiente">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+        </div>
       </div>
+
       <div className="ap-pie">
-        <p>{n} de {CONDICIONES.length}{listas && eleccion.motivo ? ` · ${eleccion.motivo}` : ""}</p>
-        {listas && eleccion.ligaApartar ? (
+        <div className="ap-prog">
+          <p>
+            {aceptado ? "Listo, aceptaste las ocho." : todasLeidas ? "Ya las leíste todas: acéptalas en la última." : <>Llevas {leidas} de {total}</>}
+            {aceptado && eleccion.motivo ? ` · ${eleccion.motivo}` : ""}
+          </p>
+          <div className="ap-barra" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={leidas} aria-label="Condiciones leídas">
+            <span style={{ width: `${(leidas / total) * 100}%` }} />
+          </div>
+        </div>
+        {aceptado && eleccion.ligaApartar ? (
           <a className="btn btn-warm" href={`${eleccion.ligaApartar}&condiciones=8`}>
             <ContenidoBoton texto="Acepto y continúo" />
           </a>
@@ -260,6 +346,6 @@ export function Condiciones() {
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }

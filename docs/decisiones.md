@@ -631,3 +631,24 @@ la otra) · **Sustituida**.
   pantallas de ejemplo, back office simulado): el back office real está en
   `/admin`. `/cotizar` y `/landing` siguen existiendo, pero ya no se enlazan
   desde el sitio.
+
+## D-46 · Poppins de vuelta y secciones de la portada rediseñadas
+
+- **Fecha / quién:** 14 oct · Ethan; hecho por Claude. **Revierte en parte
+  D-45**: conviene confirmarlo con Ana Cris.
+- **Tipografía:** Poppins en títulos y texto (como el 10 sep), en lugar de
+  Fraunces + Karla. IBM Plex Mono se queda para folios y cifras de control.
+  Poppins no trae cifras tabulares: los montos alinean porque van a la derecha.
+- **Modo oscuro:** la banda de cierre usa `--cierre` (verde profundo en
+  oscuro); las gráficas y avisos del back office dejan los colores fijos y
+  usan los de la paleta.
+- **Encabezado:** se quita «con Moretti Style» junto al logo. Moretti sigue
+  en el cierre y el pie.
+- **Cómo funciona:** banda oscura con una barra de 18 meses (anticipo, 12
+  mensualidades, obra, llaves) y tres tarjetas con su dato clave.
+- **Las ocho condiciones:** slider de una tarjeta por condición. Se aceptan
+  **una sola vez, al final**, con una casilla que se habilita al llegar a la
+  octava. Cada condición trae una línea corta además del texto completo.
+- **Los cuatro momentos y supervisión:** regla con las fechas grandes,
+  factura en tres fichas, tarjetas con ícono y «Quién verifica» con un
+  diagrama fabricante · verificador · desarrollador. Textos al «tú».
